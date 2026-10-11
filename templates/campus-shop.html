@@ -1,0 +1,1004 @@
+<!doctype html>
+<html lang="fr">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Facture</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=Figtree:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --ink: #101828;
+      --mute: #5B6478;
+      --line: #E3E7F1;
+      --bg: #F6F7FB;
+      --blue: #2438F0;
+      --tint: #E8ECFF;
+      --ok: #0E7A4B;
+      --okbg: #DDF5E8;
+      --warn: #8A4B00;
+      --warnbg: #FFEBCB;
+      --red: #B42318;
+      --redbg: #FEE4E2
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 15px/1.5 Figtree, system-ui, sans-serif
+    }
+
+    h1,
+    h2,
+    .big,
+    .logo,
+    .kpi b {
+      font-family: 'Bricolage Grotesque', Figtree, sans-serif;
+      letter-spacing: -.02em
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+      color: inherit
+    }
+
+    :focus-visible {
+      outline: 3px solid #FFB020;
+      outline-offset: 2px
+    }
+
+    .top {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 24px;
+      padding: 12px clamp(16px, 4vw, 48px);
+      background: #fff;
+      border-bottom: 1px solid var(--line)
+    }
+
+    .logo {
+      font-weight: 800;
+      font-size: 20px;
+      color: var(--blue)
+    }
+
+    .top nav {
+      display: flex;
+      gap: 4px;
+      flex: 1;
+      overflow-x: auto;
+      min-width: 100%;
+      order: 3
+    }
+
+    @media(min-width:760px) {
+      .top nav {
+        min-width: 0;
+        order: 0
+      }
+    }
+
+    .top nav button {
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 0;
+      background: none;
+      color: var(--mute);
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer
+    }
+
+    .top nav button[aria-current] {
+      background: var(--tint);
+      color: var(--blue)
+    }
+
+    .btn {
+      min-height: 44px;
+      padding: 0 20px;
+      border-radius: 999px;
+      border: 0;
+      background: var(--ink);
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer
+    }
+
+    .btn.alt {
+      background: #fff;
+      color: var(--ink);
+      border: 1.5px solid var(--ink)
+    }
+
+    .btn.sm {
+      min-height: 36px;
+      padding: 0 14px;
+      font-size: 14px
+    }
+
+    .btn.del {
+      background: #fff;
+      color: var(--red);
+      border: 1.5px solid #F0B8B2
+    }
+
+    main {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 28px clamp(16px, 4vw, 48px) 48px;
+      display: grid;
+      gap: 28px
+    }
+
+    .hero {
+      background: var(--blue);
+      color: #fff;
+      border-radius: 28px;
+      padding: clamp(22px, 4vw, 44px);
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 28px;
+      align-items: end
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600
+    }
+
+    .hero p {
+      margin: 0
+    }
+
+    .big {
+      font-size: clamp(38px, 7vw, 76px);
+      font-weight: 800;
+      line-height: 1;
+      margin: 10px 0 6px
+    }
+
+    .ctl {
+      display: grid;
+      gap: 12px
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center
+    }
+
+    .ctl label {
+      flex: 1 1 140px;
+      display: grid;
+      gap: 4px;
+      font-weight: 600;
+      font-size: 13px
+    }
+
+    .ctl input {
+      min-height: 44px;
+      border-radius: 12px;
+      border: 0;
+      padding: 0 12px;
+      background: #fff;
+      color: var(--ink)
+    }
+
+    .seg {
+      display: flex;
+      background: rgba(255, 255, 255, .18);
+      border-radius: 999px;
+      padding: 4px
+    }
+
+    .seg button {
+      flex: 1;
+      min-height: 40px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer
+    }
+
+    .seg button[aria-pressed=true] {
+      background: #fff;
+      color: var(--blue)
+    }
+
+    .kpis {
+      display: flex;
+      flex-wrap: wrap;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 20px
+    }
+
+    .kpi {
+      flex: 1 1 200px;
+      padding: 20px 24px;
+      border-right: 1px solid var(--line)
+    }
+
+    .kpi:last-child {
+      border-right: 0
+    }
+
+    .kpi span {
+      display: block;
+      color: var(--mute);
+      font-weight: 600
+    }
+
+    .kpi b {
+      display: block;
+      font-size: 26px;
+      margin-top: 4px
+    }
+
+    .cols {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+      gap: 28px
+    }
+
+    .panel {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: clamp(16px, 3vw, 28px)
+    }
+
+    .panel h2 {
+      margin: 0 0 4px;
+      font-size: 20px
+    }
+
+    .sub {
+      color: var(--mute);
+      margin: 0 0 16px
+    }
+
+    .bars {
+      display: grid;
+      gap: 8px
+    }
+
+    .bar {
+      display: grid;
+      grid-template-columns: 84px 1fr 104px;
+      gap: 10px;
+      align-items: center
+    }
+
+    .bar i {
+      display: block;
+      height: 14px;
+      border-radius: 7px;
+      background: var(--blue);
+      min-width: 3px
+    }
+
+    .bar em {
+      font-style: normal;
+      color: var(--mute);
+      font-weight: 600
+    }
+
+    .bar b {
+      text-align: right
+    }
+
+    svg {
+      width: 100%;
+      height: auto;
+      display: block
+    }
+
+    .tw {
+      overflow-x: auto
+    }
+
+    table {
+      width: 100%;
+      min-width: 640px;
+      border-collapse: collapse;
+      text-align: left
+    }
+
+    th {
+      color: var(--mute);
+      font-weight: 600;
+      padding: 10px 8px;
+      border-bottom: 2px solid var(--ink)
+    }
+
+    td {
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: middle
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 13px;
+      white-space: nowrap
+    }
+
+    .yes {
+      background: var(--okbg);
+      color: var(--ok)
+    }
+
+    .no {
+      background: #ECEEF4;
+      color: #3B4458
+    }
+
+    .wait {
+      background: var(--warnbg);
+      color: var(--warn)
+    }
+
+    .late {
+      background: var(--redbg);
+      color: var(--red)
+    }
+
+    .th {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      object-fit: cover;
+      background: var(--tint);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font: 800 20px 'Bricolage Grotesque';
+      color: var(--blue);
+      flex: none
+    }
+
+    .th.lg {
+      width: 96px;
+      height: 96px;
+      font-size: 36px
+    }
+
+    form.f {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: end;
+      margin-bottom: 18px;
+      padding: 16px;
+      background: var(--tint);
+      border-radius: 16px
+    }
+
+    form.f label {
+      flex: 1 1 150px;
+      display: grid;
+      gap: 4px;
+      font-weight: 600;
+      font-size: 13px
+    }
+
+    form.f input,
+    form.f select,
+    td input {
+      min-height: 44px;
+      border-radius: 12px;
+      border: 1px solid #C9D0F5;
+      padding: 0 12px;
+      background: #fff;
+      width: 100%
+    }
+
+    form.f input[type=file] {
+      padding: 9px 12px
+    }
+
+    td input {
+      min-height: 36px;
+      max-width: 130px
+    }
+
+    .hint {
+      flex-basis: 100%;
+      margin: 0;
+      color: var(--mute);
+      font-size: 13px
+    }
+
+    .fx {
+      flex: 2 1 320px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap
+    }
+
+    .fx label {
+      flex: 1 1 140px
+    }
+
+    .fx[hidden] {
+      display: none
+    }
+
+    .kyc {
+      flex-basis: 100%;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 14px;
+      border: 2px dashed #9AA6F5;
+      border-radius: 14px;
+      background: #fff
+    }
+
+    .kyc[hidden] {
+      display: none
+    }
+
+    .kyc>b {
+      flex-basis: 100%
+    }
+
+    .sg {
+      flex-basis: 100%
+    }
+
+    .sg canvas {
+      width: 100%;
+      height: 150px;
+      background: #fff;
+      border: 1px solid #C9D0F5;
+      border-radius: 12px;
+      touch-action: none;
+      display: block
+    }
+
+    form.f .chk {
+      flex-basis: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600
+    }
+
+    form.f .chk input {
+      width: 22px;
+      min-height: 22px
+    }
+
+    .send {
+      display: grid;
+      gap: 10px;
+      background: #F6F7FB;
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 18px
+    }
+
+    .send label {
+      display: grid;
+      gap: 4px;
+      font-weight: 600;
+      font-size: 13px
+    }
+
+    .send input {
+      min-height: 44px;
+      border-radius: 12px;
+      border: 1px solid #C9D0F5;
+      padding: 0 12px;
+      width: 100%;
+      background: #fff
+    }
+
+    .send .hint {
+      margin: 0;
+      color: var(--mute);
+      font-size: 13px
+    }
+
+    form.f [hidden] {
+      display: none
+    }
+
+    #toast {
+      position: fixed;
+      left: 50%;
+      bottom: 20px;
+      transform: translateX(-50%);
+      background: var(--ink);
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 999px;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s;
+      max-width: 90vw;
+      z-index: 20
+    }
+
+    #toast.on {
+      opacity: 1
+    }
+
+    footer {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      padding: 0 16px 36px
+    }
+
+    #inv {
+      position: fixed;
+      inset: 0;
+      background: rgba(16, 24, 40, .6);
+      z-index: 15;
+      overflow: auto;
+      padding: 16px;
+      display: none
+    }
+
+    #inv.on {
+      display: block
+    }
+
+    .paper {
+      background: #fff;
+      color: #111;
+      max-width: 760px;
+      margin: 0 auto;
+      border-radius: 12px;
+      padding: clamp(18px, 4vw, 40px)
+    }
+
+    .paper h2 {
+      margin: 0;
+      font-size: 30px;
+      color: var(--blue)
+    }
+
+    .paper .hd {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 20px
+    }
+
+    .paper table {
+      min-width: 0;
+      margin: 14px 0
+    }
+
+    .paper .tot {
+      margin-left: auto;
+      max-width: 300px
+    }
+
+    .paper .tot div {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0
+    }
+
+    .paper .bt {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-bottom: 16px;
+      flex-wrap: wrap
+    }
+
+    .paper .signature-area {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      margin-top: 52px;
+      min-height: 112px;
+      page-break-inside: avoid
+    }
+
+    .paper .signature {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 96px
+    }
+
+    .paper .signature-line {
+      border-bottom: 1px solid #111;
+      height: 42px
+    }
+
+    .paper .invoice-footer {
+      border-top: 1px solid var(--line);
+      margin-top: 34px;
+      padding-top: 16px;
+      text-align: center;
+      color: #5B6478;
+      font-size: 13px;
+      page-break-inside: avoid
+    }
+
+    .paper.pdf-rendering .noprint {
+      display: none !important
+    }
+
+    @media print {
+      body>*:not(#inv) {
+        display: none !important
+      }
+
+      #inv {
+        position: static;
+        background: #fff;
+        padding: 0;
+        display: block
+      }
+
+      .paper {
+        max-width: none;
+        border-radius: 0;
+        padding: 0
+      }
+
+      .noprint {
+        display: none !important
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="top">
+    <div class="logo">Campus Shop</div>
+    <nav aria-label="Navigation principale" id="nav">
+      <button type="button" data-go="dashboard">Tableau de bord</button><button type="button"
+        data-go="produits">Produits</button><button type="button" data-go="ventes">Ventes</button><button type="button"
+        data-go="dettes">Facilités et dettes</button>
+    </nav>
+    <button class="btn" type="button" data-go="ventes">Nouvelle vente</button>
+  </header>
+  <main id="main"></main>
+  <footer>
+    <button class="btn alt sm" data-act="csv" type="button">Exporter les ventes (CSV)</button>
+    <button class="btn del sm" data-act="reset" type="button">Réinitialiser les données d'exemple</button>
+  </footer>
+  <div id="inv" role="dialog" aria-modal="true" aria-label="Facture"></div>
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous"
+    referrerpolicy="no-referrer"></script>
+  <script>
+    const K = 'campusshop-v2', $ = id => document.getElementById(id);
+    const fmt = n => Math.round(n).toLocaleString('fr-FR') + ' Ar';
+    const e = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    const day = s => new Date(s + 'T00:00:00');
+    const addDays = (s, n) => { const d = day(s); d.setDate(d.getDate() + n); return iso(d) };
+    const ago = n => addDays(iso(new Date()), -n);
+    const short = s => day(s).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+    const long = s => day(s).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+    const wk = s => { const d = day(s); d.setDate(d.getDate() - (d.getDay() + 6) % 7); return iso(d) };
+    const gain = s => s.q * (s.v - s.a), tot = s => s.q * s.v, pd = s => s.pays.reduce((t, x) => t + x.m, 0), reste = s => tot(s) - pd(s);
+    const sched = s => { if (!s.plan) return []; const R = tot(s) - s.ac, t = s.plan.t, u = Math.floor(R / t); return [...Array(t)].map((_, k) => ({ d: addDays(s.d, s.plan.iv * (k + 1)), m: k == t - 1 ? R - u * (t - 1) : u })) };
+    const due = s => { let c = s.ac; sched(s).forEach(x => { if (x.d <= ago(0)) c += x.m }); return c };
+    const late = s => reste(s) > 0 && pd(s) < due(s);
+    const nextDue = s => { let c = s.ac; for (const x of sched(s)) { c += x.m; if (c > pd(s)) return { d: x.d, m: c - pd(s) } } return null };
+    const thumb = (p, c = '') => p && p.img ? `<img class="th ${c}" src="${p.img}" alt="">` : `<div class="th ${c}" aria-hidden="true">${p ? e(p.n[0] || '?').toUpperCase() : '?'}</div>`;
+    const prod = id => db.P.find(p => p.id == id);
+
+    function seed() {
+      const P = [{ id: 1, n: 'Clé USB 32 Go', a: 18000, v: 25000, s: 60, f: 1, t: 2, iv: 14, img: '' }, { id: 2, n: 'Powerbank 10 000 mAh', a: 45000, v: 60000, s: 30, f: 1, t: 3, iv: 14, img: '' }, { id: 3, n: 'Cahier 200 pages', a: 2000, v: 3000, s: 200, f: 0, t: 0, iv: 0, img: '' }, { id: 4, n: 'Écouteurs filaires', a: 6000, v: 10000, s: 40, f: 0, t: 0, iv: 0, img: '' }];
+      const C = ['Aina', 'Hery', 'Lalaina', 'Fanja', 'Tiana', 'Mamy'], S = []; let id = 1;
+      for (let i = 29; i >= 0; i--)for (let k = 0; k < 1 + (i % 3 == 0 ? 1 : 0); k++) {
+        const p = P[(i * 3 + k) % 4], q = 1 + ((i + k) % 4), t = q * p.v, d = ago(i), plan = p.f && (i + k) % 3 == 0;
+        const s = { id, no: id++, d, pid: p.id, n: p.n, a: p.a, v: p.v, q, c: C[(i + k) % 6], tel: '', ac: plan ? Math.round(t / 2) : t, plan: plan ? { t: p.t, iv: p.iv } : null, pays: [] };
+        s.pays.push({ d, m: s.ac }); if (plan && i > 20) s.pays.push({ d: addDays(d, 10), m: t - s.ac }); S.push(s);
+      }
+      return { P, S, n: id };
+    }
+    let db; try { db = JSON.parse(localStorage.getItem(K)) } catch (x) { }
+    if (!db || !db.P) db = seed();
+    const save = () => { try { localStorage.setItem(K, JSON.stringify(db)) } catch (x) { toast("Stockage plein : supprime des photos") } };
+    let tt; const toast = m => { const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('on'), 2800) };
+    const st = { a: ago(6), b: ago(0), m: 'day' }; let page = 'dashboard', tmpImg = '';
+
+    /* ---------- Tableau de bord ---------- */
+    function vDash() {
+      $('main').innerHTML = `<section class="hero"><div><h1>Gains sur la période choisie</h1><div class="big" id="gain"></div><p id="gainSub"></p></div>
+  <div class="ctl"><div class="row"><label>Du <input type="date" id="d1"></label><label>Au <input type="date" id="d2"></label></div>
+  <div class="seg" role="group" aria-label="Regrouper les gains"><button type="button" data-act="mode" data-m="day">Par jour</button><button type="button" data-act="mode" data-m="week">Par semaine</button></div></div></section>
+  <section class="kpis"><div class="kpi"><span>Chiffre d'affaires</span><b id="kCa"></b></div><div class="kpi"><span>Gains de la période</span><b id="kG"></b></div><div class="kpi"><span>Marge</span><b id="kM"></b></div><div class="kpi"><span>Reste à encaisser</span><b id="kR"></b></div></section>
+  <div class="cols"><section class="panel"><h2>Gains par <span id="grp"></span></h2><p class="sub">Détail de la période</p><div class="bars" id="bars"></div></section>
+  <section class="panel"><h2>Croissance des ventes</h2><p class="sub">Chiffre d'affaires cumulé, 30 derniers jours</p><svg viewBox="0 0 640 220" role="img" aria-label="Courbe du chiffre d'affaires cumulé" id="chart"></svg></section></div>`;
+      $('d1').value = st.a; $('d2').value = st.b;
+      ['d1', 'd2'].forEach(id => $(id).onchange = () => { st.a = $('d1').value; st.b = $('d2').value; upd() });
+      upd(); chart();
+    }
+    function upd() {
+      const sel = db.S.filter(x => x.d >= st.a && x.d <= st.b);
+      const ca = sel.reduce((t, x) => t + tot(x), 0), g = sel.reduce((t, x) => t + gain(x), 0);
+      $('gain').textContent = fmt(g);
+      $('gainSub').textContent = sel.length ? `du ${short(st.a)} au ${short(st.b)} · ${sel.length} vente${sel.length > 1 ? 's' : ''}` : 'Aucune vente sur cette période';
+      $('kCa').textContent = fmt(ca); $('kG').textContent = fmt(g); $('kM').textContent = ca ? (g / ca * 100).toFixed(1).replace('.', ',') + ' %' : '—';
+      $('kR').textContent = fmt(db.S.reduce((t, x) => t + reste(x), 0)); $('grp').textContent = st.m === 'day' ? 'jour' : 'semaine';
+      document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.m === st.m));
+      const m = new Map(); sel.forEach(x => { const k = st.m === 'day' ? x.d : wk(x.d); m.set(k, (m.get(k) || 0) + gain(x)) });
+      const mx = Math.max(1, ...m.values());
+      $('bars').innerHTML = [...m].sort().map(([k, v]) => `<div class="bar"><em>${st.m === 'day' ? short(k) : 'sem. ' + short(k)}</em><i style="width:${v / mx * 100}%"></i><b>${fmt(v)}</b></div>`).join('') || '<p class="sub">Choisis une autre période ou enregistre une vente.</p>';
+    }
+    function chart() {
+      const days = [...Array(30)].map((_, i) => ago(29 - i)); let c = 0;
+      const pts = days.map(d => c += db.S.filter(x => x.d === d).reduce((t, x) => t + tot(x), 0)), top = pts[29] || 1;
+      const X = i => 24 + i * (592 / 29), Y = v => 190 - v / top * 160;
+      const l = pts.map((v, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1)).join(' ');
+      $('chart').innerHTML = `<g stroke="#E3E7F1"><line x1="24" x2="616" y1="30" y2="30"/><line x1="24" x2="616" y1="110" y2="110"/><line x1="24" x2="616" y1="190" y2="190"/></g><path d="${l} L616 190 L24 190Z" fill="#2438F0" opacity=".1"/><path d="${l}" fill="none" stroke="#2438F0" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="616" cy="${Y(pts[29]).toFixed(1)}" r="6" fill="#fff" stroke="#2438F0" stroke-width="3"/><text x="616" y="${Math.max(18, Y(pts[29]) - 14).toFixed(1)}" text-anchor="end" font-size="14" font-weight="700" fill="#101828">${fmt(pts[29])}</text><text x="24" y="212" font-size="12" fill="#5B6478">${short(days[0])}</text><text x="616" y="212" text-anchor="end" font-size="12" fill="#5B6478">${short(days[29])}</text>`;
+    }
+
+    /* ---------- Produits ---------- */
+    function vProd() {
+      tmpImg = '';
+      $('main').innerHTML = `<section class="panel"><h2>Produits</h2><p class="sub">L'admin choisit la photo et le statut de facilité de paiement à la création.</p>
+  <form class="f" id="fp"><div class="row" style="flex-basis:100%"><div id="pv">${thumb(null, 'lg')}</div><label style="flex:1 1 220px">Photo du produit<input type="file" id="ph" accept="image/*"></label></div>
+  <label>Nom<input name="n" required></label><label>Prix d'achat (Ar)<input name="a" type="number" min="0" required></label><label>Prix de vente (Ar)<input name="v" type="number" min="0" required></label><label>Stock<input name="s" type="number" min="0" value="0" required></label>
+  <label>Facilité de paiement<select name="f" id="ff"><option value="0">Non autorisée</option><option value="1">Autorisée</option></select></label>
+  <div class="fx" id="fx" hidden><label>Nombre de tranches<select name="t"><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select></label><label>Intervalle entre tranches<select name="iv"><option value="7">7 jours</option><option value="14" selected>14 jours</option><option value="30">30 jours</option></select></label></div>
+  <button class="btn" type="submit">Créer le produit</button></form>
+  <div class="tw"><table><thead><tr><th>Photo</th><th>Produit</th><th>Achat</th><th>Vente</th><th>Gain / unité</th><th>Stock</th><th>Facilité de paiement</th><th></th></tr></thead><tbody>
+  ${db.P.map(p => `<tr><td>${thumb(p)}</td><td><b>${e(p.n)}</b></td><td>${fmt(p.a)}</td><td>${fmt(p.v)}</td><td><b style="color:var(--ok)">+${fmt(p.v - p.a)}</b></td><td>${p.s}</td><td><span class="tag ${p.f ? 'yes' : 'no'}">${p.f ? `Autorisée · ${p.t} tranches / ${p.iv} j` : 'Non autorisée'}</span></td><td><button class="btn del sm" data-act="delp" data-id="${p.id}" type="button">Supprimer</button></td></tr>`).join('') || '<tr><td colspan="8">Aucun produit. Crée le premier ci-dessus.</td></tr>'}
+  </tbody></table></div></section>`;
+    }
+    function readImg(file, cb) { const r = new FileReader(); r.onload = () => { const i = new Image(); i.onload = () => { const k = Math.min(1, 480 / Math.max(i.width, i.height)), c = document.createElement('canvas'); c.width = Math.round(i.width * k); c.height = Math.round(i.height * k); c.getContext('2d').drawImage(i, 0, 0, c.width, c.height); cb(c.toDataURL('image/jpeg', .7)) }; i.src = r.result }; r.readAsDataURL(file) }
+
+    /* ---------- Ventes ---------- */
+    function vVentes() {
+      tmpC = ''; sigOn = false;
+      const ok = db.P.filter(p => p.s > 0);
+      $('main').innerHTML = `<section class="panel"><h2>Ventes</h2><p class="sub">Par défaut, la vente est sans facilité de paiement. Choisis « Avec facilité » (produits autorisés par l'admin) pour demander la reconnaissance de dette.</p>
+  <form class="f" id="fv"><div id="sv" style="flex-basis:100%"></div><label>Produit<select name="p" id="sp" required>${ok.map(p => `<option value="${p.id}">${e(p.n)} (stock ${p.s})</option>`).join('')}</select></label><label>Quantité<input name="q" id="sq" type="number" min="1" value="1" required></label><label>Client<input name="c" required></label><label>Mode de paiement<select name="mode" id="mode"><option value="0" selected>Sans facilité de paiement</option><option value="1">Avec facilité de paiement</option></select></label>
+  <label>Montant payé maintenant (Ar)<input name="m" id="sm" type="number" min="0" required></label><div class="kyc" id="kyc" hidden><b>Reconnaissance de dette : informations du client</b>
+  <label>Numéro ETU (4 chiffres)<input name="etu" id="etu" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="1234"></label>
+  <label>Numéro de téléphone<input name="tel" type="tel" inputmode="tel" placeholder="034 00 000 00"></label>
+  <label>Ce numéro a WhatsApp ?<select name="wa"><option value="1">Avec WhatsApp</option><option value="0">Sans WhatsApp</option></select></label>
+  <label>Email du client (facultatif)<input name="email" type="email" inputmode="email" placeholder="nom@exemple.com"></label>
+  <label>Photo du client<input type="file" id="cph" accept="image/*" capture="user"></label><div id="cpv"></div>
+  <div class="sg"><span style="font-weight:600;font-size:13px">Signature du client (au doigt ou à la souris)</span><canvas id="sig" width="600" height="200"></canvas><button type="button" class="btn alt sm" data-act="clrsig" style="margin-top:6px">Effacer la signature</button></div>
+  <label class="chk"><input type="checkbox" id="ack"> Le client reconnaît devoir le reste et s'engage à le payer aux dates prévues.</label></div>
+  <label>Envoi de la facture<select name="env" id="env"><option value="0" selected>Ne pas envoyer</option><option value="wa">Envoyer par WhatsApp</option><option value="em">Envoyer par email</option></select></label>
+  <label id="dl" hidden>Numéro WhatsApp du destinataire<input name="dest" id="dest" type="tel" inputmode="tel" placeholder="034 00 000 00"></label>
+  <button class="btn" type="submit"${ok.length ? '' : ' disabled'}>Enregistrer la vente</button><p class="hint" id="sh"></p></form>
+  <div class="tw"><table><thead><tr><th>N°</th><th>Date</th><th>Client</th><th>Produit</th><th>Total</th><th>Gain</th><th>Statut</th><th></th></tr></thead><tbody>
+  ${[...db.S].reverse().slice(0, 40).map(s => `<tr><td>${String(s.no).padStart(4, '0')}</td><td>${short(s.d)}</td><td>${e(s.c)}</td><td>${e(s.n)} ×${s.q}</td><td>${fmt(tot(s))}</td><td><b style="color:var(--ok)">+${fmt(gain(s))}</b></td><td>${tagS(s)}</td><td><button class="btn alt sm" data-act="inv" data-id="${s.id}" type="button">Facture</button>${s.rec ? ` <button class="btn alt sm" data-act="debt" data-id="${s.id}" type="button">Reconnaissance</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="8">Aucune vente pour le moment.</td></tr>'}
+  </tbody></table></div></section>`;
+      if (ok.length) { $('sp').oninput = $('sq').oninput = $('mode').oninput = sync; $('sm').oninput = kycT; sync(); sigInit() }
+    }
+    const tagS = s => reste(s) <= 0 ? '<span class="tag yes">Payé</span>' : late(s) ? `<span class="tag late">En retard · ${fmt(reste(s))}</span>` : `<span class="tag wait">Reste ${fmt(reste(s))}</span>`;
+    function sync() {
+      const p = prod($('sp').value); if (!p) return; const t = p.v * (+$('sq').value || 0), m = $('sm');
+      $('sv').innerHTML = `<div class="row">${thumb(p, 'lg')}<div><b>${e(p.n)}</b><br>${fmt(p.v)} l'unité · total ${fmt(t)}</div></div>`;
+      m.max = t;
+      const md = $('mode'); md.options[1].disabled = !p.f; if (!p.f) md.value = '0';
+      if (md.value !== '1') { m.value = t; m.readOnly = true; $('sh').textContent = p.f ? 'Sans facilité de paiement : paiement comptant.' : 'Facilité non autorisée pour ce produit : paiement comptant.' }
+      else {
+        m.readOnly = false; if (!m.value || +m.value > t || +m.dataset.auto || m.dataset.was !== '1') m.value = Math.round(t / 2), m.dataset.auto = 1;
+        $('sh').textContent = `Avec facilité : acompte, puis ${p.t} tranches, une tous les ${p.iv} jours.`
+      }
+      m.dataset.was = md.value;
+      kycT();
+    }
+    function kycT() { const p = prod($('sp').value), t = p ? p.v * (+$('sq').value || 0) : 0; $('kyc').hidden = !(p && p.f && $('mode').value === '1' && +$('sm').value < t) }
+
+    /* ---------- Facilités et dettes ---------- */
+    function vDettes() {
+      const L = db.S.filter(s => reste(s) > 0), T = L.reduce((t, s) => t + reste(s), 0), R = L.filter(late).length;
+      $('main').innerHTML = `<section class="panel"><h2>Facilités et dettes</h2><p class="sub">${L.length ? `${L.length} vente${L.length > 1 ? 's' : ''} à encaisser · total ${fmt(T)} · ${R} en retard` : 'Aucune dette : tout est encaissé.'}</p>
+  <div class="tw"><table><thead><tr><th>Client</th><th>Produit</th><th>Total</th><th>Payé</th><th>Reste</th><th>Prochaine échéance</th><th>Versement</th><th></th></tr></thead><tbody>
+  ${L.map(s => { const n = nextDue(s); return `<tr><td><div class="row">${thumb({ img: s.cph, n: s.c })}<div><b>${e(s.c)}</b>${s.etu ? '<br>ETU ' + s.etu : ''}${s.tel ? '<br>' + e(s.tel) + (s.wa ? ` · <a href="${wa(s)}" target="_blank" rel="noopener">WhatsApp</a>` : '') : ''}</div></div></td><td>${e(s.n)} ×${s.q}</td><td>${fmt(tot(s))}</td><td>${fmt(pd(s))}</td><td><b style="color:var(--warn)">${fmt(reste(s))}</b></td><td>${n ? `${short(n.d)} · ${fmt(n.m)}<br>` : ''}${tagS(s)}</td><td><div class="row"><input type="number" min="1" max="${reste(s)}" value="${n && n.m > 0 ? Math.min(n.m, reste(s)) : reste(s)}" aria-label="Montant du versement"><button class="btn sm" data-act="pay" data-id="${s.id}" type="button">Encaisser</button></div></td><td><button class="btn alt sm" data-act="inv" data-id="${s.id}" type="button">Facture</button>${s.rec ? ` <button class="btn alt sm" data-act="debt" data-id="${s.id}" type="button">Reconnaissance</button>` : ''}</td></tr>` }).join('')}
+  </tbody></table></div></section>`;
+    }
+
+    /* ---------- Facture ---------- */
+    function invoice(id) {
+      const s = db.S.find(x => x.id === id), p = prod(s.pid), sc = sched(s);
+      $('inv').innerHTML = `<div class="paper"><div class="bt noprint"><button class="btn" data-act="print" type="button">Imprimer / PDF</button>${s.rec ? `<button class="btn alt" data-act="debt" data-id="${s.id}" type="button">Reconnaissance de dette</button>` : ''}<button class="btn alt" data-act="close" type="button">Fermer</button></div>
+  <div class="send noprint"><b>Envoyer la facture</b>
+  <label>Numéro WhatsApp<input id="sn" type="tel" inputmode="tel" value="${e(s.tel || '')}" placeholder="034 00 000 00"></label>
+  <label>Adresse email<input id="se" type="email" inputmode="email" value="${e(s.email || '')}" placeholder="nom@exemple.com"></label>
+  <div class="row"><button class="btn" data-act="savepdf" data-id="${s.id}" type="button">Enregistrer le PDF</button><button class="btn alt" data-act="swa" data-id="${s.id}" type="button">Partager le PDF</button><button class="btn alt" data-act="sem" data-id="${s.id}" type="button">Envoyer par email</button></div>
+  <p class="hint">Nom : ${String(s.no).padStart(4, '0')}-${e(s.c)}-${e(s.n)}.pdf. Les ventes récentes apparaissent en premier.</p></div>
+  <div class="hd"><div><h2>Campus Shop</h2><div>Vente de produits sur le campus</div></div><div style="text-align:right"><b>FACTURE N° ${String(s.no).padStart(4, '0')}</b><br>${long(s.d)}<br>Client : <b>${e(s.c)}</b>${s.etu ? '<br>N° ETU ' + s.etu : ''}${s.tel ? '<br>' + e(s.tel) : ''}</div></div>
+  <table><thead><tr><th>Article</th><th>Qté</th><th>Prix unitaire</th><th style="text-align:right">Total</th></tr></thead><tbody><tr><td><div class="row">${thumb(p)}<b>${e(s.n)}</b></div></td><td>${s.q}</td><td>${fmt(s.v)}</td><td style="text-align:right">${fmt(tot(s))}</td></tr></tbody></table>
+  <div class="tot"><div><span>Total à payer</span><b>${fmt(tot(s))}</b></div><div><span>Déjà payé</span><span>${fmt(pd(s))}</span></div><div style="border-top:2px solid #111;font-size:18px"><b>Reste à payer</b><b>${fmt(reste(s))}</b></div></div>
+  <p><b>Paiements reçus</b></p><table><tbody>${s.pays.map(x => `<tr><td>${long(x.d)}</td><td style="text-align:right">${fmt(x.m)}</td></tr>`).join('') || '<tr><td>Aucun paiement</td></tr>'}</tbody></table>
+  ${sc.length ? `<p><b>Échéancier de la facilité de paiement</b> (acompte ${fmt(s.ac)})</p><table><tbody>${sc.map((x, i) => `<tr><td>Tranche ${i + 1}</td><td>${long(x.d)}</td><td style="text-align:right">${fmt(x.m)}</td></tr>`).join('')}</tbody></table>` : ''}
+  <div class="signature-area"><div class="signature"><b>Signature du vendeur</b><div class="signature-line"></div></div><div class="signature"><b>Signature du client</b><div class="signature-line"></div></div></div>
+  <div class="invoice-footer"><b>Merci pour votre confiance.</b><br>En cas de problème, appelez le <b>033 49 641 80</b>.</div></div>`;
+      $('inv').classList.add('on');
+    }
+
+    /* ---------- Reconnaissance de dette et signature ---------- */
+    let sigOn = false, tmpC = '';
+    const wa = s => { const d = s.tel.replace(/\D/g, ''), n = d.startsWith('261') ? d : '261' + d.replace(/^0/, ''); return 'https://wa.me/' + n + '?text=' + encodeURIComponent('Bonjour ' + s.c + ', rappel : il vous reste ' + fmt(reste(s)) + ' à payer pour ' + s.n + '. Merci !') };
+    const safeFilename = value => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'sans-nom';
+    const invoiceFilename = sale => String(sale.no).padStart(4, '0') + '-' + safeFilename(sale.c) + '-' + safeFilename(sale.n) + '.pdf';
+    async function buildInvoicePdf(id) {
+      if (!window.html2pdf) throw new Error('PDF indisponible');
+      const paper = document.querySelector('.paper');
+      if (!paper) throw new Error('Facture fermée');
+      paper.classList.add('pdf-rendering');
+      try {
+        const sale = db.S.find(x => x.id === id), filename = invoiceFilename(sale);
+        const blob = await html2pdf().set({ margin: 0, filename, image: { type: 'jpeg', quality: .98 }, html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(paper).outputPdf('blob');
+        return new File([blob], filename, { type: 'application/pdf' });
+      } finally { paper.classList.remove('pdf-rendering') }
+    }
+    async function saveInvoicePdf(id) {
+      try {
+        const file = await buildInvoicePdf(id);
+        await saveFileOnServer(file);
+        toast('PDF enregistré dans frontend/facture : ' + file.name);
+      } catch (error) {
+        toast('PDF non enregistré : vérifie que le serveur est démarré');
+      }
+    }
+    async function saveFileOnServer(file) {
+      const upload = new FormData(); upload.append('file', file, file.name);
+      const response = await fetch('/api/factures', { method: 'POST', body: upload });
+      if (!response.ok) throw new Error('Sauvegarde serveur refusée');
+    }
+    async function shareInvoicePdf(id) {
+      if (!navigator.share) return toast('Le partage de fichier n’est pas disponible sur cet appareil');
+      try {
+        const file = await buildInvoicePdf(id);
+        await saveFileOnServer(file);
+        if (!navigator.canShare || !navigator.canShare({ files: [file] })) return toast('Le partage de fichier PDF n’est pas pris en charge par ce navigateur');
+        await navigator.share({ title: 'Facture', files: [file] });
+      } catch (error) { if (error.name !== 'AbortError') toast('Impossible de préparer le PDF'); }
+    }
+    async function sendWhatsAppInvoice(id) {
+      const sale = db.S.find(x => x.id === id), destination = ($('sn').value || '').replace(/\D/g, '');
+      if (destination.length < 9) return toast('Numéro WhatsApp invalide');
+      const number = destination.startsWith('261') ? destination : '261' + destination.replace(/^0/, '');
+      const whatsappUrl = 'https://wa.me/' + number;
+      try {
+        const file = await buildInvoicePdf(id);
+        await saveFileOnServer(file);
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ title: 'Facture', files: [file] });
+          return;
+        }
+        window.open(whatsappUrl, '_blank', 'noopener');
+        toast('PDF enregistré dans frontend/facture : joins-le dans WhatsApp');
+      } catch (error) { toast('Impossible de préparer le PDF'); }
+    }
+    async function emailInvoice(id, email, message) {
+      try {
+        const file = await buildInvoicePdf(id);
+        await saveFileOnServer(file);
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ title: 'Facture', text: message, files: [file] });
+          return;
+        }
+        toast('PDF enregistré dans frontend/facture : ajoute-le à ton email');
+        setTimeout(() => { location.href = 'mailto:' + email + '?subject=' + encodeURIComponent('Facture n° ' + String(db.S.find(x => x.id === id).no).padStart(4, '0') + ' — Campus Shop') + '&body=' + encodeURIComponent(message) }, 500);
+      } catch (error) { toast('Impossible de préparer le PDF'); }
+    }
+    const msgFac = s => { const n = nextDue(s); return 'Bonjour ' + s.c + ',\nvoici votre facture n° ' + String(s.no).padStart(4, '0') + ' du ' + long(s.d) + ' :\n' + s.n + ' ×' + s.q + '\nTotal : ' + fmt(tot(s)) + '\nDéjà payé : ' + fmt(pd(s)) + '\nReste à payer : ' + fmt(reste(s)) + (reste(s) > 0 && n ? '\nProchaine échéance : ' + long(n.d) + ' (' + fmt(n.m) + ')' : '') + '\nMerci pour votre confiance. — Campus Shop' };
+    function sigInit() {
+      const c = $('sig'); if (!c) return; const x = c.getContext('2d'); x.lineWidth = 3; x.lineCap = 'round'; x.strokeStyle = '#101828'; let d = false;
+      const pt = v => { const r = c.getBoundingClientRect(); return [(v.clientX - r.left) * c.width / r.width, (v.clientY - r.top) * c.height / r.height] };
+      c.onpointerdown = v => { d = true; c.setPointerCapture(v.pointerId); const [a, b] = pt(v); x.beginPath(); x.moveTo(a, b) };
+      c.onpointermove = v => { if (!d) return; const [a, b] = pt(v); x.lineTo(a, b); x.stroke(); sigOn = true };
+      c.onpointerup = c.onpointercancel = () => { d = false }
+    }
+    function debtDoc(id) {
+      const s = db.S.find(x => x.id === id), sc = sched(s), r = tot(s) - s.ac;
+      $('inv').innerHTML = `<div class="paper"><div class="bt noprint"><button class="btn" data-act="print" type="button">Imprimer / PDF</button><button class="btn alt" data-act="inv" data-id="${s.id}" type="button">Voir la facture</button><button class="btn alt" data-act="close" type="button">Fermer</button></div>
+  <div class="hd"><div><h2>Reconnaissance de dette</h2><div>Campus Shop · facture n° ${String(s.no).padStart(4, '0')}</div></div>${thumb({ img: s.cph, n: s.c }, 'lg')}</div>
+  <p>Je soussigné(e) <b>${e(s.c)}</b>, étudiant(e) portant le numéro ETU <b>${e(s.etu)}</b>${s.tel ? ', joignable au ' + e(s.tel) + (s.wa ? ' (WhatsApp)' : ' (sans WhatsApp)') : ''}, reconnais devoir à <b>Campus Shop</b> la somme de <b>${fmt(r)}</b>, solde de mon achat de <b>${e(s.n)} ×${s.q}</b> d'un montant total de ${fmt(tot(s))}, effectué le ${long(s.d)}. J'ai versé un acompte de ${fmt(s.ac)}.</p>
+  <p>Je m'engage à payer ce solde en ${s.plan.t} tranche(s), selon l'échéancier suivant :</p>
+  <table><tbody>${sc.map((x, i) => `<tr><td>Tranche ${i + 1}</td><td>${long(x.d)}</td><td style="text-align:right">${fmt(x.m)}</td></tr>`).join('')}</tbody></table>
+  <p>Fait le ${long(s.d)}.</p>
+  <div style="display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-top:12px"><div>Signature du client<br><img src="${s.sig}" alt="Signature du client" style="width:240px;max-width:100%;border-bottom:1px solid #111"></div><div>Signature du vendeur<br><div style="height:90px;width:220px;border-bottom:1px solid #111"></div></div></div></div>`;
+      $('inv').classList.add('on');
+    }
+
+    /* ---------- Navigation et événements ---------- */
+    const V = { dashboard: vDash, produits: vProd, ventes: vVentes, dettes: vDettes };
+    function go(p) {
+      if (p) page = p; document.querySelectorAll('#nav button').forEach(b => b.toggleAttribute('aria-current', b.dataset.go === page));
+      V[page](); window.scrollTo(0, 0);
+    }
+    document.addEventListener('click', ev => {
+      const g = ev.target.closest('[data-go]'); if (g) return go(g.dataset.go);
+      const b = ev.target.closest('[data-act]'); if (!b) return; const a = b.dataset.act, id = +b.dataset.id;
+      if (a === 'mode') { st.m = b.dataset.m; upd() }
+      if (a === 'delp' && confirm('Supprimer ce produit ?')) { db.P = db.P.filter(p => p.id !== id); save(); vProd(); toast('Produit supprimé') }
+      if (a === 'pay') {
+        const s = db.S.find(x => x.id === id), v = Math.min(+b.closest('tr').querySelector('input').value || 0, reste(s));
+        if (v > 0) { s.pays.push({ d: ago(0), m: v }); save(); vDettes(); toast('Versement de ' + fmt(v) + ' enregistré') }
+      }
+      if (a === 'savepdf') { saveInvoicePdf(id) }
+      if (a === 'swa' || a === 'sem' || a === 'ssh') {
+        const s = db.S.find(x => x.id === id), m = msgFac(s);
+        if (a === 'swa') { sendWhatsAppInvoice(id) }
+        if (a === 'sem') { const em = ($('se').value || '').trim(); if (!/^\S+@\S+\.\S+$/.test(em)) return toast('Adresse email invalide'); emailInvoice(id, em, m) }
+        if (a === 'ssh') navigator.share({ title: 'Facture Campus Shop', text: m }).catch(() => { })
+      }
+      if (a === 'inv') invoice(id);
+      if (a === 'debt') debtDoc(id);
+      if (a === 'clrsig') { const c = $('sig'); c.getContext('2d').clearRect(0, 0, c.width, c.height); sigOn = false }
+      if (a === 'close') $('inv').classList.remove('on');
+      if (a === 'print') window.print();
+      if (a === 'reset' && confirm("Remplacer toutes les données par les exemples ?")) { db = seed(); save(); go(); toast('Données réinitialisées') }
+      if (a === 'csv') {
+        const r = ['numero;date;client;produit;quantite;total;gain;paye'].concat(db.S.map(s => [s.no, s.d, s.c, s.n, s.q, tot(s), gain(s), pd(s)].join(';')));
+        const u = URL.createObjectURL(new Blob(['\ufeff' + r.join('\n')], { type: 'text/csv' })), l = document.createElement('a'); l.href = u; l.download = 'ventes.csv'; l.click(); URL.revokeObjectURL(u)
+      }
+    });
+    document.addEventListener('change', ev => {
+      if (ev.target.id === 'ff') $('fx').hidden = ev.target.value !== '1';
+      if (ev.target.id === 'env') { const v = ev.target.value, w = v === 'wa', d = $('dest'); $('dl').hidden = v === '0'; $('dl').firstChild.textContent = w ? 'Numéro WhatsApp du destinataire' : 'Email du destinataire'; d.type = w ? 'tel' : 'email'; d.inputMode = w ? 'tel' : 'email'; d.placeholder = w ? '034 00 000 00' : 'nom@exemple.com'; d.value = '' }
+      if (ev.target.id === 'ph' && ev.target.files[0]) readImg(ev.target.files[0], u => { tmpImg = u; $('pv').innerHTML = `<img class="th lg" src="${u}" alt="Aperçu">` });
+      if (ev.target.id === 'sm') ev.target.dataset.auto = 0;
+      if (ev.target.id === 'cph' && ev.target.files[0]) readImg(ev.target.files[0], u => { tmpC = u; $('cpv').innerHTML = `<img class="th lg" src="${u}" alt="Aperçu">` });
+    });
+    document.addEventListener('submit', ev => {
+      ev.preventDefault(); const f = new FormData(ev.target);
+      if (ev.target.id === 'fp') { const fa = +f.get('f'); db.P.unshift({ id: Date.now(), n: f.get('n').trim(), a: +f.get('a'), v: +f.get('v'), s: +f.get('s'), f: fa, t: fa ? +f.get('t') : 0, iv: fa ? +f.get('iv') : 0, img: tmpImg }); save(); vProd(); toast('Produit créé') }
+      if (ev.target.id === 'fv') {
+        const p = prod(f.get('p')), q = +f.get('q');
+        if (!p || q < 1 || q > p.s) return toast('Stock insuffisant : ' + (p ? p.s : 0) + ' disponible(s)');
+        const fac = p.f && f.get('mode') === '1', t = q * p.v, ac = fac ? Math.min(Math.max(+f.get('m'), 0), t) : t, kyc = fac && ac < t, etu = kyc ? (f.get('etu') || '').trim() : '';
+        if (kyc) {
+          if (!/^\d{4}$/.test(etu)) return toast('Numéro ETU : 4 chiffres exactement');
+          if ((f.get('tel') || '').replace(/\D/g, '').length < 9) return toast('Numéro de téléphone invalide');
+          if (!tmpC) return toast('Ajoute la photo du client'); if (!sigOn) return toast('Le client doit signer'); if (!$('ack').checked) return toast('Coche la reconnaissance de dette')
+        }
+        const env = f.get('env') || '0'; let dest = (f.get('dest') || '').trim();
+        if (env !== '0') {
+          if (!dest && kyc) dest = env === 'wa' ? (f.get('tel') || '').trim() : (f.get('email') || '').trim();
+          if (env === 'wa' && dest.replace(/\D/g, '').length < 9) return toast("Numéro WhatsApp invalide pour l'envoi");
+          if (env === 'em' && !/^\S+@\S+\.\S+$/.test(dest)) return toast("Adresse email invalide pour l'envoi")
+        }
+        const s = { id: Date.now(), no: db.n++, d: ago(0), pid: p.id, n: p.n, a: p.a, v: p.v, q, c: f.get('c').trim(), tel: kyc ? f.get('tel').trim() : '', ac, plan: fac && ac < t ? { t: p.t, iv: p.iv } : null, pays: ac > 0 ? [{ d: ago(0), m: ac }] : [], etu, cph: kyc ? tmpC : '', sig: kyc ? $('sig').toDataURL('image/png') : '', rec: kyc, wa: kyc && f.get('wa') === '1', email: kyc ? (f.get('email') || '').trim() : '' };
+        db.S.push(s); p.s -= q; save(); vVentes(); toast('Vente enregistrée'); invoice(s.id);
+        if (env !== '0') { $(env === 'wa' ? 'sn' : 'se').value = dest; document.querySelector('[data-act="' + (env === 'wa' ? 'swa' : 'sem') + '"]').click() }
+      }
+    });
+    go();
+  </script>
+</body>
+
+</html>
