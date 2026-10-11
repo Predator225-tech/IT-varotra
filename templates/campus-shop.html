@@ -471,14 +471,76 @@
       flex-basis: 100%
     }
 
+    .sg-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 8px
+    }
+
+    .sg-title {
+      display: grid;
+      gap: 2px
+    }
+
+    .sg-title span {
+      color: var(--mute);
+      font-size: 13px;
+      font-weight: 500
+    }
+
+    .sg-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap
+    }
+
     .sg canvas {
       width: 100%;
       height: 150px;
       background: #fff;
-      border: 1px solid #C9D0F5;
+      border: 2px dashed #9AA6F5;
       border-radius: 12px;
       touch-action: none;
-      display: block
+      display: block;
+      cursor: crosshair
+    }
+
+    .sg canvas:focus-visible {
+      border-color: var(--blue)
+    }
+
+    .sg-status {
+      min-height: 20px;
+      margin: 6px 0 0;
+      color: var(--mute);
+      font-size: 13px
+    }
+
+    .sg.signature-fullscreen,
+    .sg:fullscreen {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: clamp(18px, 5vw, 72px);
+      background: #F6F7FB
+    }
+
+    .sg.signature-fullscreen canvas,
+    .sg:fullscreen canvas {
+      height: min(55vh, 420px);
+      border-color: var(--blue);
+      box-shadow: 0 12px 36px rgba(16, 24, 40, .12)
+    }
+
+    .sg.signature-fullscreen .sg-status,
+    .sg:fullscreen .sg-status {
+      font-size: 14px
     }
 
     form.f .chk {
@@ -793,7 +855,7 @@
   <label>Ce numéro a WhatsApp ?<select name="wa"><option value="1">Avec WhatsApp</option><option value="0">Sans WhatsApp</option></select></label>
   <label>Email du client (facultatif)<input name="email" type="email" inputmode="email" placeholder="nom@exemple.com"></label>
   <label>Photo du client<input type="file" id="cph" accept="image/*" capture="user"></label><div id="cpv"></div>
-  <div class="sg"><span style="font-weight:600;font-size:13px">Signature du client (au doigt ou à la souris)</span><canvas id="sig" width="600" height="200"></canvas><button type="button" class="btn alt sm" data-act="clrsig" style="margin-top:6px">Effacer la signature</button></div>
+  <div class="sg" id="signature-pad"><div class="sg-head"><div class="sg-title"><b>Signature du client</b><span>Tracez au doigt, au stylet ou à la souris</span></div><div class="sg-actions"><button type="button" class="btn alt sm" data-act="sigfull" aria-controls="sig" aria-pressed="false" title="Agrandir la zone de signature">Plein écran</button><button type="button" class="btn alt sm" data-act="clrsig">Effacer</button></div></div><canvas id="sig" width="600" height="200" tabindex="0" aria-label="Zone de signature du client"></canvas><p class="sg-status" id="sig-status" role="status">La signature est obligatoire si le paiement est échelonné.</p></div>
   <label class="chk"><input type="checkbox" id="ack"> Le client reconnaît devoir le reste et s'engage à le payer aux dates prévues.</label></div>
   <label>Envoi de la facture<select name="env" id="env"><option value="0" selected>Ne pas envoyer</option><option value="wa">Envoyer par WhatsApp</option><option value="em">Envoyer par email</option></select></label>
   <label id="dl" hidden>Numéro WhatsApp du destinataire<input name="dest" id="dest" type="tel" inputmode="tel" placeholder="034 00 000 00"></label>
@@ -915,11 +977,20 @@
       } catch (error) { toast('Impossible de préparer le PDF'); }
     }
     const msgFac = s => { const n = nextDue(s); return 'Bonjour ' + s.c + ',\nvoici votre facture n° ' + String(s.no).padStart(4, '0') + ' du ' + long(s.d) + ' :\n' + s.n + ' ×' + s.q + '\nTotal : ' + fmt(tot(s)) + '\nDéjà payé : ' + fmt(pd(s)) + '\nReste à payer : ' + fmt(reste(s)) + (reste(s) > 0 && n ? '\nProchaine échéance : ' + long(n.d) + ' (' + fmt(n.m) + ')' : '') + '\nMerci pour votre confiance. — Campus Shop' };
+    function setSigFullscreen(active) {
+      const pad = $('signature-pad'), button = document.querySelector('[data-act="sigfull"]'); if (!pad) return;
+      pad.classList.toggle('signature-fullscreen', active); if (button) { button.setAttribute('aria-pressed', String(active)); button.textContent = active ? 'Quitter le plein écran' : 'Plein écran' }
+    }
+    async function toggleSigFullscreen() {
+      const pad = $('signature-pad'); if (!pad) return;
+      if (document.fullscreenElement === pad) return document.exitFullscreen();
+      if (pad.requestFullscreen) { try { await pad.requestFullscreen() } catch (error) { setSigFullscreen(true) } } else setSigFullscreen(true)
+    }
     function sigInit() {
-      const c = $('sig'); if (!c) return; const x = c.getContext('2d'); x.lineWidth = 3; x.lineCap = 'round'; x.strokeStyle = '#101828'; let d = false;
+      const c = $('sig'); if (!c) return; const x = c.getContext('2d'); x.lineWidth = 3; x.lineCap = 'round'; x.lineJoin = 'round'; x.strokeStyle = '#101828'; let d = false;
       const pt = v => { const r = c.getBoundingClientRect(); return [(v.clientX - r.left) * c.width / r.width, (v.clientY - r.top) * c.height / r.height] };
       c.onpointerdown = v => { d = true; c.setPointerCapture(v.pointerId); const [a, b] = pt(v); x.beginPath(); x.moveTo(a, b) };
-      c.onpointermove = v => { if (!d) return; const [a, b] = pt(v); x.lineTo(a, b); x.stroke(); sigOn = true };
+      c.onpointermove = v => { if (!d) return; const [a, b] = pt(v); x.lineTo(a, b); x.stroke(); sigOn = true; $('sig-status').textContent = 'Signature en cours. Vous pouvez l’effacer et recommencer.' };
       c.onpointerup = c.onpointercancel = () => { d = false }
     }
     function debtDoc(id) {
@@ -958,7 +1029,8 @@
       }
       if (a === 'inv') invoice(id);
       if (a === 'debt') debtDoc(id);
-      if (a === 'clrsig') { const c = $('sig'); c.getContext('2d').clearRect(0, 0, c.width, c.height); sigOn = false }
+      if (a === 'sigfull') toggleSigFullscreen();
+      if (a === 'clrsig') { const c = $('sig'); c.getContext('2d').clearRect(0, 0, c.width, c.height); sigOn = false; $('sig-status').textContent = 'Zone effacée. Tracez la signature du client.'; c.focus() }
       if (a === 'close') $('inv').classList.remove('on');
       if (a === 'print') window.print();
       if (a === 'reset' && confirm("Remplacer toutes les données par les exemples ?")) { db = seed(); save(); go(); toast('Données réinitialisées') }
@@ -967,6 +1039,8 @@
         const u = URL.createObjectURL(new Blob(['\ufeff' + r.join('\n')], { type: 'text/csv' })), l = document.createElement('a'); l.href = u; l.download = 'ventes.csv'; l.click(); URL.revokeObjectURL(u)
       }
     });
+    document.addEventListener('fullscreenchange', () => setSigFullscreen(document.fullscreenElement === $('signature-pad')));
+    document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && $('signature-pad')?.classList.contains('signature-fullscreen')) setSigFullscreen(false) });
     document.addEventListener('change', ev => {
       if (ev.target.id === 'ff') $('fx').hidden = ev.target.value !== '1';
       if (ev.target.id === 'env') { const v = ev.target.value, w = v === 'wa', d = $('dest'); $('dl').hidden = v === '0'; $('dl').firstChild.textContent = w ? 'Numéro WhatsApp du destinataire' : 'Email du destinataire'; d.type = w ? 'tel' : 'email'; d.inputMode = w ? 'tel' : 'email'; d.placeholder = w ? '034 00 000 00' : 'nom@exemple.com'; d.value = '' }
