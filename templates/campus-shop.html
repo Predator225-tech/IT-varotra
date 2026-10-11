@@ -499,7 +499,7 @@
 
     .sg canvas {
       width: 100%;
-      height: 150px;
+      height: 240px;
       background: #fff;
       border: 2px dashed #9AA6F5;
       border-radius: 12px;
@@ -541,6 +541,73 @@
     .sg.signature-fullscreen .sg-status,
     .sg:fullscreen .sg-status {
       font-size: 14px
+    }
+
+    .proof-choice {
+      flex-basis: 100%;
+      display: grid;
+      gap: 10px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff
+    }
+
+    .proof-options {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 10px
+    }
+
+    .proof-option {
+      position: relative;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      min-height: 64px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      cursor: pointer
+    }
+
+    .proof-option:has(input:checked) {
+      border-color: var(--blue);
+      background: var(--tint)
+    }
+
+    .proof-option input {
+      width: 20px;
+      min-height: 20px;
+      margin: 1px 0 0
+    }
+
+    .proof-option span {
+      display: grid;
+      gap: 2px
+    }
+
+    .proof-option small {
+      color: var(--mute)
+    }
+
+    .proof-panel[hidden] {
+      display: none
+    }
+
+    .bio-panel {
+      display: grid;
+      gap: 8px;
+      padding: 16px;
+      border: 1px dashed #9AA6F5;
+      border-radius: 12px;
+      background: #F8F9FF
+    }
+
+    .bio-panel p {
+      margin: 0;
+      color: var(--mute);
+      font-size: 13px
     }
 
     form.f .chk {
@@ -845,7 +912,7 @@
 
     /* ---------- Ventes ---------- */
     function vVentes() {
-      tmpC = ''; sigOn = false;
+      tmpC = ''; sigOn = false; biometricOn = false; biometricCredential = '';
       const ok = db.P.filter(p => p.s > 0);
       $('main').innerHTML = `<section class="panel"><h2>Ventes</h2><p class="sub">Par défaut, la vente est sans facilité de paiement. Choisis « Avec facilité » (produits autorisés par l'admin) pour demander la reconnaissance de dette.</p>
   <form class="f" id="fv"><div id="sv" style="flex-basis:100%"></div><label>Produit<select name="p" id="sp" required>${ok.map(p => `<option value="${p.id}">${e(p.n)} (stock ${p.s})</option>`).join('')}</select></label><label>Quantité<input name="q" id="sq" type="number" min="1" value="1" required></label><label>Client<input name="c" required></label><label>Mode de paiement<select name="mode" id="mode"><option value="0" selected>Sans facilité de paiement</option><option value="1">Avec facilité de paiement</option></select></label>
@@ -855,7 +922,9 @@
   <label>Ce numéro a WhatsApp ?<select name="wa"><option value="1">Avec WhatsApp</option><option value="0">Sans WhatsApp</option></select></label>
   <label>Email du client (facultatif)<input name="email" type="email" inputmode="email" placeholder="nom@exemple.com"></label>
   <label>Photo du client<input type="file" id="cph" accept="image/*" capture="user"></label><div id="cpv"></div>
-  <div class="sg" id="signature-pad"><div class="sg-head"><div class="sg-title"><b>Signature du client</b><span>Tracez au doigt, au stylet ou à la souris</span></div><div class="sg-actions"><button type="button" class="btn alt sm" data-act="sigfull" aria-controls="sig" aria-pressed="false" title="Agrandir la zone de signature">Plein écran</button><button type="button" class="btn alt sm" data-act="clrsig">Effacer</button></div></div><canvas id="sig" width="600" height="200" tabindex="0" aria-label="Zone de signature du client"></canvas><p class="sg-status" id="sig-status" role="status">La signature est obligatoire si le paiement est échelonné.</p></div>
+  <div class="proof-choice"><b>Mode de reconnaissance du client</b><div class="proof-options" role="radiogroup" aria-label="Mode de reconnaissance"><label class="proof-option"><input type="radio" name="proof" value="signature" checked><span><b>Signature manuscrite</b><small>Le client signe au doigt, au stylet ou à la souris.</small></span></label><label class="proof-option"><input type="radio" name="proof" value="biometrie"><span><b>Empreinte biométrique</b><small>Utilise la sécurité biométrique de l’appareil.</small></span></label></div></div>
+  <div class="proof-panel" id="signature-panel"><div class="sg" id="signature-pad"><div class="sg-head"><div class="sg-title"><b>Signature du client</b><span>Zone agrandie pour une signature plus confortable</span></div><div class="sg-actions"><button type="button" class="btn alt sm" data-act="sigfull" aria-controls="sig" aria-pressed="false" title="Agrandir la zone de signature">Plein écran</button><button type="button" class="btn alt sm" data-act="clrsig">Effacer</button></div></div><canvas id="sig" width="900" height="320" tabindex="0" aria-label="Zone de signature du client"></canvas><p class="sg-status" id="sig-status" role="status">Tracez la signature du client dans la zone ci-dessus.</p></div></div>
+  <div class="proof-panel" id="biometric-panel" hidden><div class="bio-panel"><b>Validation par empreinte biométrique</b><p>L’empreinte reste dans l’appareil. Le navigateur ne transmet jamais l’image de l’empreinte à Campus Shop.</p><button type="button" class="btn" data-act="biometric">Utiliser mon empreinte</button><p class="sg-status" id="bio-status" role="status">Appuyez sur le bouton pour démarrer la vérification.</p></div></div>
   <label class="chk"><input type="checkbox" id="ack"> Le client reconnaît devoir le reste et s'engage à le payer aux dates prévues.</label></div>
   <label>Envoi de la facture<select name="env" id="env"><option value="0" selected>Ne pas envoyer</option><option value="wa">Envoyer par WhatsApp</option><option value="em">Envoyer par email</option></select></label>
   <label id="dl" hidden>Numéro WhatsApp du destinataire<input name="dest" id="dest" type="tel" inputmode="tel" placeholder="034 00 000 00"></label>
@@ -863,7 +932,7 @@
   <div class="tw"><table><thead><tr><th>N°</th><th>Date</th><th>Client</th><th>Produit</th><th>Total</th><th>Gain</th><th>Statut</th><th></th></tr></thead><tbody>
   ${[...db.S].reverse().slice(0, 40).map(s => `<tr><td>${String(s.no).padStart(4, '0')}</td><td>${short(s.d)}</td><td>${e(s.c)}</td><td>${e(s.n)} ×${s.q}</td><td>${fmt(tot(s))}</td><td><b style="color:var(--ok)">+${fmt(gain(s))}</b></td><td>${tagS(s)}</td><td><button class="btn alt sm" data-act="inv" data-id="${s.id}" type="button">Facture</button>${s.rec ? ` <button class="btn alt sm" data-act="debt" data-id="${s.id}" type="button">Reconnaissance</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="8">Aucune vente pour le moment.</td></tr>'}
   </tbody></table></div></section>`;
-      if (ok.length) { $('sp').oninput = $('sq').oninput = $('mode').oninput = sync; $('sm').oninput = kycT; sync(); sigInit() }
+      if (ok.length) { $('sp').oninput = $('sq').oninput = $('mode').oninput = sync; $('sm').oninput = kycT; sync(); sigInit(); updateProofUI() }
     }
     const tagS = s => reste(s) <= 0 ? '<span class="tag yes">Payé</span>' : late(s) ? `<span class="tag late">En retard · ${fmt(reste(s))}</span>` : `<span class="tag wait">Reste ${fmt(reste(s))}</span>`;
     function sync() {
@@ -910,7 +979,7 @@
     }
 
     /* ---------- Reconnaissance de dette et signature ---------- */
-    let sigOn = false, tmpC = '';
+    let sigOn = false, biometricOn = false, biometricCredential = '', tmpC = '';
     const wa = s => { const d = s.tel.replace(/\D/g, ''), n = d.startsWith('261') ? d : '261' + d.replace(/^0/, ''); return 'https://wa.me/' + n + '?text=' + encodeURIComponent('Bonjour ' + s.c + ', rappel : il vous reste ' + fmt(reste(s)) + ' à payer pour ' + s.n + '. Merci !') };
     const safeFilename = value => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'sans-nom';
     const invoiceFilename = sale => String(sale.no).padStart(4, '0') + '-' + safeFilename(sale.c) + '-' + safeFilename(sale.n) + '.pdf';
@@ -993,6 +1062,24 @@
       c.onpointermove = v => { if (!d) return; const [a, b] = pt(v); x.lineTo(a, b); x.stroke(); sigOn = true; $('sig-status').textContent = 'Signature en cours. Vous pouvez l’effacer et recommencer.' };
       c.onpointerup = c.onpointercancel = () => { d = false }
     }
+    function updateProofUI() {
+      const proof = document.querySelector('input[name="proof"]:checked')?.value || 'signature';
+      $('signature-panel').hidden = proof !== 'signature'; $('biometric-panel').hidden = proof !== 'biometrie';
+      if (proof === 'signature') { biometricOn = false; biometricCredential = '' }
+      if (proof === 'biometrie') { sigOn = false; $('bio-status').textContent = 'Appuyez sur le bouton pour démarrer la vérification.' }
+    }
+    function bytesToBase64(bytes) { let binary = ''; bytes.forEach(byte => { binary += String.fromCharCode(byte) }); return btoa(binary) }
+    async function useBiometric() {
+      const status = $('bio-status');
+      if (!window.isSecureContext || !window.PublicKeyCredential || !navigator.credentials) { status.textContent = 'La biométrie nécessite HTTPS et un appareil compatible. Choisissez la signature.'; return }
+      status.textContent = 'Confirmez votre identité avec la sécurité de votre appareil…';
+      try {
+        const challenge = crypto.getRandomValues(new Uint8Array(32)), userId = crypto.getRandomValues(new Uint8Array(16));
+        const credential = await navigator.credentials.create({ publicKey: { challenge, rp: { name: 'Campus Shop' }, user: { id: userId, name: 'client@campus-shop.local', displayName: 'Client Campus Shop' }, pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }], authenticatorSelection: { userVerification: 'required' }, timeout: 60000, attestation: 'none' } });
+        if (!credential) throw new Error('Biométrie non confirmée');
+        biometricCredential = bytesToBase64(new Uint8Array(credential.rawId)); biometricOn = true; status.textContent = 'Empreinte confirmée. La vente peut être enregistrée.';
+      } catch (error) { biometricOn = false; status.textContent = error.name === 'NotAllowedError' ? 'Vérification annulée. Réessayez ou choisissez la signature.' : 'Biométrie indisponible sur cet appareil. Choisissez la signature.' }
+    }
     function debtDoc(id) {
       const s = db.S.find(x => x.id === id), sc = sched(s), r = tot(s) - s.ac;
       $('inv').innerHTML = `<div class="paper"><div class="bt noprint"><button class="btn" data-act="print" type="button">Imprimer / PDF</button><button class="btn alt" data-act="inv" data-id="${s.id}" type="button">Voir la facture</button><button class="btn alt" data-act="close" type="button">Fermer</button></div>
@@ -1001,7 +1088,7 @@
   <p>Je m'engage à payer ce solde en ${s.plan.t} tranche(s), selon l'échéancier suivant :</p>
   <table><tbody>${sc.map((x, i) => `<tr><td>Tranche ${i + 1}</td><td>${long(x.d)}</td><td style="text-align:right">${fmt(x.m)}</td></tr>`).join('')}</tbody></table>
   <p>Fait le ${long(s.d)}.</p>
-  <div style="display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-top:12px"><div>Signature du client<br><img src="${s.sig}" alt="Signature du client" style="width:240px;max-width:100%;border-bottom:1px solid #111"></div><div>Signature du vendeur<br><div style="height:90px;width:220px;border-bottom:1px solid #111"></div></div></div></div>`;
+  <div style="display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-top:12px"><div>${s.proof === 'biometrie' ? 'Validation biométrique du client<br><b>Empreinte confirmée sur l’appareil</b>' : `Signature du client<br><img src="${s.sig}" alt="Signature du client" style="width:320px;max-width:100%;border-bottom:1px solid #111">`}</div><div>Signature du vendeur<br><div style="height:90px;width:220px;border-bottom:1px solid #111"></div></div></div></div>`;
       $('inv').classList.add('on');
     }
 
@@ -1030,6 +1117,7 @@
       if (a === 'inv') invoice(id);
       if (a === 'debt') debtDoc(id);
       if (a === 'sigfull') toggleSigFullscreen();
+      if (a === 'biometric') useBiometric();
       if (a === 'clrsig') { const c = $('sig'); c.getContext('2d').clearRect(0, 0, c.width, c.height); sigOn = false; $('sig-status').textContent = 'Zone effacée. Tracez la signature du client.'; c.focus() }
       if (a === 'close') $('inv').classList.remove('on');
       if (a === 'print') window.print();
@@ -1042,6 +1130,7 @@
     document.addEventListener('fullscreenchange', () => setSigFullscreen(document.fullscreenElement === $('signature-pad')));
     document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && $('signature-pad')?.classList.contains('signature-fullscreen')) setSigFullscreen(false) });
     document.addEventListener('change', ev => {
+      if (ev.target.name === 'proof') updateProofUI();
       if (ev.target.id === 'ff') $('fx').hidden = ev.target.value !== '1';
       if (ev.target.id === 'env') { const v = ev.target.value, w = v === 'wa', d = $('dest'); $('dl').hidden = v === '0'; $('dl').firstChild.textContent = w ? 'Numéro WhatsApp du destinataire' : 'Email du destinataire'; d.type = w ? 'tel' : 'email'; d.inputMode = w ? 'tel' : 'email'; d.placeholder = w ? '034 00 000 00' : 'nom@exemple.com'; d.value = '' }
       if (ev.target.id === 'ph' && ev.target.files[0]) readImg(ev.target.files[0], u => { tmpImg = u; $('pv').innerHTML = `<img class="th lg" src="${u}" alt="Aperçu">` });
@@ -1054,11 +1143,11 @@
       if (ev.target.id === 'fv') {
         const p = prod(f.get('p')), q = +f.get('q');
         if (!p || q < 1 || q > p.s) return toast('Stock insuffisant : ' + (p ? p.s : 0) + ' disponible(s)');
-        const fac = p.f && f.get('mode') === '1', t = q * p.v, ac = fac ? Math.min(Math.max(+f.get('m'), 0), t) : t, kyc = fac && ac < t, etu = kyc ? (f.get('etu') || '').trim() : '';
+        const fac = p.f && f.get('mode') === '1', t = q * p.v, ac = fac ? Math.min(Math.max(+f.get('m'), 0), t) : t, kyc = fac && ac < t, etu = kyc ? (f.get('etu') || '').trim() : '', proof = f.get('proof') || 'signature';
         if (kyc) {
           if (!/^\d{4}$/.test(etu)) return toast('Numéro ETU : 4 chiffres exactement');
           if ((f.get('tel') || '').replace(/\D/g, '').length < 9) return toast('Numéro de téléphone invalide');
-          if (!tmpC) return toast('Ajoute la photo du client'); if (!sigOn) return toast('Le client doit signer'); if (!$('ack').checked) return toast('Coche la reconnaissance de dette')
+          if (!tmpC) return toast('Ajoute la photo du client'); if (proof === 'signature' && !sigOn) return toast('Le client doit signer'); if (proof === 'biometrie' && !biometricOn) return toast('Confirme d’abord l’empreinte biométrique'); if (!$('ack').checked) return toast('Coche la reconnaissance de dette')
         }
         const env = f.get('env') || '0'; let dest = (f.get('dest') || '').trim();
         if (env !== '0') {
@@ -1066,7 +1155,7 @@
           if (env === 'wa' && dest.replace(/\D/g, '').length < 9) return toast("Numéro WhatsApp invalide pour l'envoi");
           if (env === 'em' && !/^\S+@\S+\.\S+$/.test(dest)) return toast("Adresse email invalide pour l'envoi")
         }
-        const s = { id: Date.now(), no: db.n++, d: ago(0), pid: p.id, n: p.n, a: p.a, v: p.v, q, c: f.get('c').trim(), tel: kyc ? f.get('tel').trim() : '', ac, plan: fac && ac < t ? { t: p.t, iv: p.iv } : null, pays: ac > 0 ? [{ d: ago(0), m: ac }] : [], etu, cph: kyc ? tmpC : '', sig: kyc ? $('sig').toDataURL('image/png') : '', rec: kyc, wa: kyc && f.get('wa') === '1', email: kyc ? (f.get('email') || '').trim() : '' };
+        const s = { id: Date.now(), no: db.n++, d: ago(0), pid: p.id, n: p.n, a: p.a, v: p.v, q, c: f.get('c').trim(), tel: kyc ? f.get('tel').trim() : '', ac, plan: fac && ac < t ? { t: p.t, iv: p.iv } : null, pays: ac > 0 ? [{ d: ago(0), m: ac }] : [], etu, cph: kyc ? tmpC : '', sig: kyc && proof === 'signature' ? $('sig').toDataURL('image/png') : '', proof: kyc ? proof : '', biometricCredential: kyc && proof === 'biometrie' ? biometricCredential : '', rec: kyc, wa: kyc && f.get('wa') === '1', email: kyc ? (f.get('email') || '').trim() : '' };
         db.S.push(s); p.s -= q; save(); vVentes(); toast('Vente enregistrée'); invoice(s.id);
         if (env !== '0') { $(env === 'wa' ? 'sn' : 'se').value = dest; document.querySelector('[data-act="' + (env === 'wa' ? 'swa' : 'sem') + '"]').click() }
       }

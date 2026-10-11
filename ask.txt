@@ -4,3 +4,7 @@ source .venv/bin/activate
 uvicorn app.main:app --reload
 ------------------------------------------------------*
 /home/dylqn/Mandresy/S5/Audit et Transformation digitale/Mr Tanjona/ITvente/frontend/facture 
+
+
+je veux que tu fasses intégrer un systeme de choix en surplus on peut utiliser soit l empreinte 
+biométrique soit la signature je veux que la zone de signature soit plus grand 
