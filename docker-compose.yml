@@ -23,9 +23,11 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
       UPLOAD_DIR: /data/uploads
       INVOICE_DIR: /data/invoices
+      SYNC_FILE: /data/sync/campus-shop.json
     volumes:
       - uploads:/data/uploads
       - ./frontend/facture:/data/invoices
+      - ./data:/data/sync
     depends_on:
       db:
         condition: service_healthy

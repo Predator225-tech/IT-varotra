@@ -76,6 +76,47 @@
       color: var(--blue)
     }
 
+    .live-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--mute);
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap
+    }
+
+    .live-status::before {
+      content: '';
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #0E7A4B
+    }
+
+    .live-status.reconnecting::before { background: #D98B00 }
+    .live-status.offline::before { background: #B42318 }
+
+    #version-banner {
+      display: none;
+      position: fixed;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 30;
+      align-items: center;
+      gap: 12px;
+      max-width: calc(100vw - 24px);
+      padding: 10px 12px 10px 16px;
+      border: 1px solid #C9D0F5;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 8px 28px rgba(16, 24, 40, .14);
+      font-weight: 700
+    }
+
+    #version-banner.on { display: flex }
+
     .top nav {
       display: flex;
       gap: 4px;
@@ -712,6 +753,143 @@
       page-break-inside: avoid
     }
 
+    @media (max-width: 640px) {
+      .top {
+        gap: 8px 12px;
+        padding: 10px 16px;
+      }
+
+      .top > .btn {
+        flex: 1;
+        min-width: 0;
+        padding: 0 12px;
+      }
+
+      .top nav {
+        margin: 0 -4px;
+        padding-bottom: 2px;
+      }
+
+      main {
+        gap: 18px;
+        padding: 18px 12px 32px;
+      }
+
+      .hero {
+        gap: 20px;
+        border-radius: 20px;
+        padding: 20px;
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .big {
+        font-size: clamp(34px, 12vw, 52px);
+        overflow-wrap: anywhere;
+      }
+
+      .ctl .row,
+      .ctl label {
+        min-width: 0;
+      }
+
+      .ctl label {
+        flex-basis: 100%;
+      }
+
+      .seg {
+        width: 100%;
+      }
+
+      .kpis {
+        border-radius: 16px;
+      }
+
+      .kpi {
+        flex-basis: 50%;
+        min-width: 0;
+        padding: 14px 16px;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .kpi:nth-last-child(-n + 2) {
+        border-bottom: 0;
+      }
+
+      .kpi b {
+        font-size: 21px;
+        overflow-wrap: anywhere;
+      }
+
+      .panel {
+        border-radius: 16px;
+        padding: 16px;
+      }
+
+      .bar {
+        grid-template-columns: 62px minmax(0, 1fr) auto;
+        gap: 6px;
+        font-size: 13px;
+      }
+
+      .bar b {
+        font-size: 12px;
+      }
+
+      form.f {
+        padding: 12px;
+      }
+
+      form.f > .btn,
+      .send .row .btn {
+        width: 100%;
+      }
+
+      .fx,
+      .fx label,
+      form.f label {
+        min-width: 0;
+      }
+
+      .sg-actions {
+        width: 100%;
+      }
+
+      .sg-actions .btn {
+        flex: 1;
+      }
+
+      .paper {
+        padding: 18px;
+        border-radius: 8px;
+      }
+
+      .paper h2 {
+        font-size: 24px;
+      }
+
+      .paper .hd > div:last-child {
+        width: 100%;
+        text-align: left !important;
+      }
+
+      .paper .signature-area {
+        grid-template-columns: 1fr;
+        gap: 24px;
+        margin-top: 32px;
+      }
+
+      .paper .bt,
+      .paper .send .row {
+        justify-content: stretch;
+      }
+
+      .paper .bt .btn,
+      .paper .send .row .btn {
+        flex: 1 1 100%;
+      }
+    }
+
     .paper.pdf-rendering .noprint {
       display: none !important
     }
@@ -744,6 +922,7 @@
 <body>
   <header class="top">
     <div class="logo">Campus Shop</div>
+    <div class="live-status" id="live-status" role="status" aria-live="polite">En direct</div>
     <nav aria-label="Navigation principale" id="nav">
       <button type="button" data-go="dashboard">Tableau de bord</button><button type="button"
         data-go="produits">Produits</button><button type="button" data-go="ventes">Ventes</button><button type="button"
@@ -758,6 +937,7 @@
   </footer>
   <div id="inv" role="dialog" aria-modal="true" aria-label="Facture"></div>
   <div id="toast" role="status" aria-live="polite"></div>
+  <div id="version-banner" role="status" aria-live="polite">Nouvelle version disponible <button class="btn sm" type="button" id="reload-version">Recharger</button></div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous"
     referrerpolicy="no-referrer"></script>
@@ -792,7 +972,81 @@
     }
     let db; try { db = JSON.parse(localStorage.getItem(K)) } catch (x) { }
     if (!db || !db.P) db = seed();
-    const save = () => { try { localStorage.setItem(K, JSON.stringify(db)) } catch (x) { toast("Stockage plein : supprime des photos") } };
+    let syncTimer;
+    const save = () => {
+      try { localStorage.setItem(K, JSON.stringify(db)) } catch (x) { toast("Stockage plein : supprime des photos") }
+      clearTimeout(syncTimer);
+      syncTimer = setTimeout(() => fetch('/api/sync', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(db)
+      }).catch(() => { }), 250);
+    };
+    async function loadSharedData() {
+      try {
+        const response = await fetch('/api/sync', { cache: 'no-store' });
+        if (!response.ok) throw new Error('Synchronisation indisponible');
+        const shared = await response.json();
+        if (shared && shared.P) {
+          db = shared;
+          localStorage.setItem(K, JSON.stringify(db));
+        } else {
+          save();
+        }
+      } catch (x) { return false }
+      return true;
+    }
+    let liveSource, liveRetry = 0, liveRetryTimer, refreshTimer, pollingTimer, lastLiveEventId = '';
+    const setLiveStatus = (label, state = '') => { const el = $('live-status'); el.textContent = label; el.className = 'live-status' + (state ? ' ' + state : '') };
+    const hasActiveForm = () => Boolean(document.querySelector('form'));
+    function scheduleLiveRefresh(message = 'Données mises à jour depuis un autre appareil') {
+      clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(async () => {
+        if (!await loadSharedData()) return;
+        toast(message);
+        if (page === 'dashboard') { upd(); chart() }
+        else if (!hasActiveForm()) go();
+      }, 300);
+    }
+    function stopPolling() { clearInterval(pollingTimer); pollingTimer = undefined }
+    function startPolling() {
+      if (pollingTimer) return;
+      pollingTimer = setInterval(() => scheduleLiveRefresh('Données actualisées'), 30000);
+    }
+    async function connectLive() {
+      clearTimeout(liveRetryTimer);
+      setLiveStatus('Reconnexion...', 'reconnecting');
+      try {
+        const token = localStorage.getItem('campusshop-token');
+        const response = await fetch('/api/evenements/ticket', { method: 'POST', headers: token ? { Authorization: 'Bearer ' + token } : {} });
+        if (!response.ok) throw new Error('Ticket SSE refusé');
+        const { ticket } = await response.json();
+        const lastId = lastLiveEventId ? '&last_id=' + encodeURIComponent(lastLiveEventId) : '';
+        liveSource = new EventSource('/api/evenements?ticket=' + encodeURIComponent(ticket) + lastId);
+        liveSource.onopen = () => { liveRetry = 0; stopPolling(); setLiveStatus('En direct') };
+        liveSource.onmessage = event => { lastLiveEventId = event.lastEventId || lastLiveEventId; scheduleLiveRefresh(event.data ? 'Nouvelle mise à jour reçue' : undefined) };
+        liveSource.addEventListener('resync', () => scheduleLiveRefresh('Données resynchronisées'));
+        liveSource.onerror = () => {
+          liveSource.close(); liveSource = undefined; setLiveStatus(navigator.onLine ? 'Reconnexion...' : 'Hors ligne', navigator.onLine ? 'reconnecting' : 'offline');
+          liveRetry += 1; if (liveRetry >= 3) startPolling();
+          liveRetryTimer = setTimeout(connectLive, Math.min(30000, 1000 * 2 ** Math.min(liveRetry - 1, 5)));
+        };
+      } catch (error) {
+        setLiveStatus(navigator.onLine ? 'Reconnexion...' : 'Hors ligne', navigator.onLine ? 'reconnecting' : 'offline');
+        liveRetry += 1; if (liveRetry >= 3) startPolling();
+        liveRetryTimer = setTimeout(connectLive, Math.min(30000, 1000 * 2 ** Math.min(liveRetry - 1, 5)));
+      }
+    }
+    function checkVersion() {
+      fetch('/version.json?ts=' + Date.now(), { cache: 'no-store' }).then(response => response.ok ? response.json() : null).then(version => {
+        if (!version) return;
+        const previous = sessionStorage.getItem('campusshop-version');
+        sessionStorage.setItem('campusshop-version', version.id);
+        if (previous && previous !== version.id) $('version-banner').classList.add('on');
+      }).catch(() => { });
+    }
+    $('reload-version').onclick = () => location.reload();
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) { scheduleLiveRefresh('Données actualisées'); checkVersion(); connectLive() } });
+    window.addEventListener('online', () => { setLiveStatus('Reconnexion...', 'reconnecting'); connectLive(); scheduleLiveRefresh('Connexion rétablie') });
+    window.addEventListener('offline', () => setLiveStatus('Hors ligne', 'offline'));
     let tt; const toast = m => { const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('on'), 2800) };
     const st = { a: ago(6), b: ago(0), m: 'day' }; let page = 'dashboard', tmpImg = '';
 
@@ -913,7 +1167,7 @@
     let sigOn = false, tmpC = '';
     const wa = s => { const d = s.tel.replace(/\D/g, ''), n = d.startsWith('261') ? d : '261' + d.replace(/^0/, ''); return 'https://wa.me/' + n + '?text=' + encodeURIComponent('Bonjour ' + s.c + ', rappel : il vous reste ' + fmt(reste(s)) + ' à payer pour ' + s.n + '. Merci !') };
     const safeFilename = value => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'sans-nom';
-    const invoiceFilename = sale => String(sale.no).padStart(4, '0') + '-' + safeFilename(sale.c) + '-' + safeFilename(sale.n) + '.pdf';
+    const invoiceFilename = sale => 'Campus-facture-' + String(sale.no).padStart(4, '0') + '-' + safeFilename(sale.c) + '-' + safeFilename(sale.n) + '.pdf';
     async function buildInvoicePdf(id) {
       if (!window.html2pdf) throw new Error('PDF indisponible');
       const paper = document.querySelector('.paper');
@@ -925,13 +1179,24 @@
         return new File([blob], filename, { type: 'application/pdf' });
       } finally { paper.classList.remove('pdf-rendering') }
     }
+    function downloadInvoiceToDevice(file) {
+      const url = URL.createObjectURL(file), link = document.createElement('a');
+      link.href = url; link.download = file.name; link.rel = 'noopener';
+      document.body.appendChild(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
     async function saveInvoicePdf(id) {
       try {
         const file = await buildInvoicePdf(id);
-        await saveFileOnServer(file);
-        toast('PDF enregistré dans frontend/facture : ' + file.name);
+        downloadInvoiceToDevice(file);
+        try {
+          await saveFileOnServer(file);
+          toast('PDF téléchargé sur cet appareil et copié sur le serveur : ' + file.name);
+        } catch (error) {
+          toast('PDF téléchargé sur cet appareil : ' + file.name);
+        }
       } catch (error) {
-        toast('PDF non enregistré : vérifie que le serveur est démarré');
+        toast('Téléchargement du PDF impossible');
       }
     }
     async function saveFileOnServer(file) {
@@ -1071,7 +1336,7 @@
         if (env !== '0') { $(env === 'wa' ? 'sn' : 'se').value = dest; document.querySelector('[data-act="' + (env === 'wa' ? 'swa' : 'sem') + '"]').click() }
       }
     });
-    go();
+    loadSharedData().then(() => { go(); connectLive(); checkVersion(); setInterval(checkVersion, 300000) });
   </script>
 </body>
 

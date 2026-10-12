@@ -1,0 +1,3 @@
+- Dans un telephone je veux qu il soit telecharger dans l ordit et dans le telephone qui le telecharge 
+- Rendre le site https au lieux de http 
+- utiliser cdn ou bootstrap pour faire rendre compatible mobile et les autres écran 

@@ -1,17 +1,23 @@
 from datetime import datetime, timedelta, timezone
+import asyncio
+import json
 from pathlib import Path
 import os
 import re
+import secrets
+import time
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile, status
+from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.responses import StreamingResponse
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel, Field, EmailStr
 
 from .services import invoice_message, sending_links
+from .event_bus import EventBus, create_event_bus
 
 
 SECRET = os.getenv("JWT_SECRET", "development-secret-change-me")
@@ -20,13 +26,26 @@ UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "uploads"))
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 INVOICE_DIR = Path(os.getenv("INVOICE_DIR", "invoice"))
 INVOICE_DIR.mkdir(parents=True, exist_ok=True)
+SYNC_FILE = Path(os.getenv("SYNC_FILE", "data/campus-shop.json"))
+SYNC_FILE.parent.mkdir(parents=True, exist_ok=True)
 pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2 = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 app = FastAPI(title="Campus Shop API", version="1.0.0")
+event_bus: EventBus = create_event_bus()
+event_tickets: dict[str, float] = {}
+ticket_requests: dict[str, list[float]] = {}
 origins = [x.strip() for x in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")]
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True,
                    allow_methods=["*"], allow_headers=["*"])
+
+
+@app.middleware("http")
+async def prevent_stale_data(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 class LoginResponse(BaseModel):
@@ -68,6 +87,12 @@ class SendingLinkRequest(BaseModel):
     reste: int
 
 
+class SyncPayload(BaseModel):
+    P: list[dict]
+    S: list[dict]
+    n: int
+
+
 PRODUCTS = [
     Product(id=1, nom="Clé USB 32 Go", prix_achat=18000, prix_vente=25000, stock=60,
             facilite_paiement=True, nb_tranches=2, intervalle_jours=14),
@@ -99,6 +124,101 @@ def normalize_phone(value: str) -> str:
 @app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+def issue_event_ticket(client_id: str) -> str:
+    now = time.monotonic()
+    recent = [stamp for stamp in ticket_requests.get(client_id, []) if now - stamp < 60]
+    if len(recent) >= 12:
+        raise HTTPException(status_code=429, detail="Trop de demandes de ticket")
+    recent.append(now)
+    ticket_requests[client_id] = recent
+    ticket = secrets.token_urlsafe(32)
+    event_tickets[ticket] = now + 30
+    return ticket
+
+
+@app.post("/api/evenements/ticket")
+def event_ticket(request: Request, _: Annotated[str | None, Depends(lambda: None)] = None) -> dict[str, str]:
+    client_id = request.client.host if request.client else "unknown"
+    return {"ticket": issue_event_ticket(client_id)}
+
+
+def consume_event_ticket(ticket: str, request: Request) -> None:
+    expires = event_tickets.pop(ticket, None)
+    if expires is None or time.monotonic() > expires:
+        raise HTTPException(status_code=401, detail="Ticket SSE invalide ou expiré")
+
+
+def sse(event: dict[str, str | None], name: str | None = None) -> str:
+    prefix = f"event: {name}\n" if name else ""
+    return prefix + f"id: {event['id']}\ndata: {json.dumps(event)}\n\n"
+
+
+@app.get("/api/evenements")
+async def events(request: Request, ticket: str) -> StreamingResponse:
+    consume_event_ticket(ticket, request)
+    last_id = request.headers.get("Last-Event-ID") or request.query_params.get("last_id")
+
+    async def stream():
+        iterator = event_bus.subscribe(last_id)
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    event = await asyncio.wait_for(iterator.__anext__(), timeout=15)
+                    if event is None:
+                        yield "event: resync\ndata: {}\n\n"
+                    else:
+                        yield sse(event.as_dict())
+                except asyncio.TimeoutError:
+                    yield ": heartbeat\n\n"
+        finally:
+            await iterator.aclose()
+
+    return StreamingResponse(stream(), media_type="text/event-stream", headers={
+        "Cache-Control": "no-cache, no-store",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",
+    })
+
+
+@app.get("/api/sync", response_model=SyncPayload | None)
+def get_sync_data() -> SyncPayload | None:
+    if not SYNC_FILE.exists():
+        return None
+    try:
+        return SyncPayload.model_validate(json.loads(SYNC_FILE.read_text(encoding="utf-8")))
+    except (OSError, ValueError) as exc:
+        raise HTTPException(status_code=500, detail="Données partagées illisibles") from exc
+
+
+@app.put("/api/sync", response_model=SyncPayload)
+async def put_sync_data(payload: SyncPayload) -> SyncPayload:
+    previous: SyncPayload | None = get_sync_data()
+    temporary = SYNC_FILE.with_suffix(".tmp")
+    try:
+        temporary.write_text(payload.model_dump_json(), encoding="utf-8")
+        temporary.replace(SYNC_FILE)
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail="Données partagées non enregistrées") from exc
+    if previous is not None:
+        old_products = {item.get("id") for item in previous.P}
+        new_products = {item.get("id") for item in payload.P}
+        for product_id in new_products - old_products:
+            await event_bus.publish("produit.cree", str(product_id))
+        for product_id in old_products - new_products:
+            await event_bus.publish("produit.supprime", str(product_id))
+        old_sales = {item.get("id") for item in previous.S}
+        new_sales = {item.get("id") for item in payload.S}
+        for sale_id in new_sales - old_sales:
+            await event_bus.publish("vente.creee", str(sale_id))
+        if old_sales == new_sales and previous.S != payload.S:
+            await event_bus.publish("paiement.ajoute")
+        if previous != payload:
+            await event_bus.publish("stats.invalidees")
+    return payload
 
 
 @app.post("/api/auth/login", response_model=LoginResponse)
