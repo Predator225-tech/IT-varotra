@@ -7,6 +7,7 @@ import re
 import secrets
 import time
 from typing import Annotated
+from urllib.parse import urlsplit
 
 from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,6 +19,12 @@ from pydantic import BaseModel, Field, EmailStr
 
 from .services import invoice_message, sending_links
 from .event_bus import EventBus, create_event_bus
+from webauthn import (generate_authentication_options, generate_registration_options,
+                      verify_authentication_response, verify_registration_response)
+from webauthn.helpers import base64url_to_bytes, bytes_to_base64url, options_to_json_dict
+from webauthn.helpers.structs import (AuthenticatorSelectionCriteria,
+                                      PublicKeyCredentialDescriptor,
+                                      UserVerificationRequirement)
 
 
 SECRET = os.getenv("JWT_SECRET", "development-secret-change-me")
@@ -35,6 +42,12 @@ app = FastAPI(title="Campus Shop API", version="1.0.0")
 event_bus: EventBus = create_event_bus()
 event_tickets: dict[str, float] = {}
 ticket_requests: dict[str, list[float]] = {}
+WEBAUTHN_RP_ID = os.getenv("WEBAUTHN_RP_ID", "localhost")
+WEBAUTHN_ORIGINS = [origin.strip() for origin in os.getenv(
+    "WEBAUTHN_ORIGIN", "https://localhost:8443"
+).split(",") if origin.strip()]
+biometric_challenges: dict[str, bytes] = {}
+biometric_credentials: dict[str, dict[str, dict[str, object]]] = {}
 origins = [x.strip() for x in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")]
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True,
                    allow_methods=["*"], allow_headers=["*"])
@@ -126,6 +139,110 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+def webauthn_context(request: Request) -> tuple[str, str]:
+    origin = request.headers.get("origin")
+    if not origin:
+        forwarded_host = request.headers.get("x-forwarded-host", request.headers.get("host", "localhost"))
+        forwarded_proto = request.headers.get("x-forwarded-proto", request.url.scheme)
+        origin = f"{forwarded_proto}://{forwarded_host}"
+    if origin not in WEBAUTHN_ORIGINS:
+        raise HTTPException(status_code=400, detail="Origine WebAuthn non autorisée")
+    hostname = urlsplit(origin).hostname
+    if not hostname:
+        raise HTTPException(status_code=400, detail="Origine WebAuthn invalide")
+    return hostname, origin
+
+
+def biometric_store(rp_id: str) -> dict[str, dict[str, object]]:
+    return biometric_credentials.setdefault(rp_id, {})
+
+
+@app.get("/api/biometrie/inscription/options")
+def biometric_registration_options(request: Request) -> dict:
+    rp_id, _ = webauthn_context(request)
+    credentials = biometric_store(rp_id)
+    options = generate_registration_options(
+        rp_id=rp_id,
+        rp_name="Campus Shop",
+        user_name="campus-shop-admin",
+        user_display_name="Campus Shop",
+        authenticator_selection=AuthenticatorSelectionCriteria(
+            user_verification=UserVerificationRequirement.REQUIRED,
+        ),
+        exclude_credentials=[
+            PublicKeyCredentialDescriptor(id=base64url_to_bytes(credential_id))
+            for credential_id in credentials
+        ],
+    )
+    biometric_challenges[f"registration:{rp_id}"] = options.challenge
+    return options_to_json_dict(options)
+
+
+@app.post("/api/biometrie/inscription/verification")
+def verify_biometric_registration(request: Request, payload: dict) -> dict[str, bool]:
+    rp_id, origin = webauthn_context(request)
+    challenge = biometric_challenges.pop(f"registration:{rp_id}", None)
+    if challenge is None:
+        raise HTTPException(status_code=400, detail="Inscription biométrique expirée")
+    try:
+        verification = verify_registration_response(
+            credential=payload,
+            expected_challenge=challenge,
+            expected_rp_id=rp_id,
+            expected_origin=origin,
+            require_user_verification=True,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Empreinte biométrique non vérifiée") from exc
+    biometric_store(rp_id)[bytes_to_base64url(verification.credential_id)] = {
+        "id": verification.credential_id,
+        "public_key": verification.credential_public_key,
+        "sign_count": verification.sign_count,
+    }
+    return {"verified": True}
+
+
+@app.get("/api/biometrie/approbation/options")
+def biometric_approval_options(request: Request) -> dict:
+    rp_id, _ = webauthn_context(request)
+    credentials = biometric_store(rp_id)
+    if not credentials:
+        raise HTTPException(status_code=409, detail="Aucune empreinte enregistrée")
+    options = generate_authentication_options(
+        rp_id=rp_id,
+        allow_credentials=[
+            PublicKeyCredentialDescriptor(id=base64url_to_bytes(credential_id))
+            for credential_id in credentials
+        ],
+        user_verification=UserVerificationRequirement.REQUIRED,
+    )
+    biometric_challenges[f"authentication:{rp_id}"] = options.challenge
+    return options_to_json_dict(options)
+
+
+@app.post("/api/biometrie/approbation/verification")
+def verify_biometric_approval(request: Request, payload: dict) -> dict[str, bool]:
+    rp_id, origin = webauthn_context(request)
+    challenge = biometric_challenges.pop(f"authentication:{rp_id}", None)
+    credential = biometric_store(rp_id).get(str(payload.get("id", "")))
+    if challenge is None or credential is None:
+        raise HTTPException(status_code=400, detail="Approbation biométrique expirée")
+    try:
+        verification = verify_authentication_response(
+            credential=payload,
+            expected_challenge=challenge,
+            expected_rp_id=rp_id,
+            expected_origin=origin,
+            credential_public_key=credential["public_key"],
+            credential_current_sign_count=credential["sign_count"],
+            require_user_verification=True,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Empreinte biométrique non vérifiée") from exc
+    credential["sign_count"] = verification.new_sign_count
+    return {"verified": True}
+
+
 def issue_event_ticket(client_id: str) -> str:
     now = time.monotonic()
     recent = [stamp for stamp in ticket_requests.get(client_id, []) if now - stamp < 60]
@@ -174,6 +291,8 @@ async def events(request: Request, ticket: str) -> StreamingResponse:
                         yield sse(event.as_dict())
                 except asyncio.TimeoutError:
                     yield ": heartbeat\n\n"
+                except StopAsyncIteration:
+                    break
         finally:
             await iterator.aclose()
 

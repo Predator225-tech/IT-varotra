@@ -941,8 +941,12 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous"
     referrerpolicy="no-referrer"></script>
+  <script src="https://unpkg.com/@simplewebauthn/browser@14.0.1/dist/bundle/index.umd.min.js"
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script>
     const K = 'campusshop-v2', $ = id => document.getElementById(id);
+    const API_BASE = window.CAMPUS_SHOP_API_BASE || '';
+    const apiUrl = path => API_BASE + path;
     const fmt = n => Math.round(n).toLocaleString('fr-FR') + ' Ar';
     const e = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -971,18 +975,19 @@
       return { P, S, n: id };
     }
     let db; try { db = JSON.parse(localStorage.getItem(K)) } catch (x) { }
+    let biometricApproved = false;
     if (!db || !db.P) db = seed();
     let syncTimer;
     const save = () => {
       try { localStorage.setItem(K, JSON.stringify(db)) } catch (x) { toast("Stockage plein : supprime des photos") }
       clearTimeout(syncTimer);
-      syncTimer = setTimeout(() => fetch('/api/sync', {
+      syncTimer = setTimeout(() => fetch(apiUrl('/api/sync'), {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(db)
       }).catch(() => { }), 250);
     };
     async function loadSharedData() {
       try {
-        const response = await fetch('/api/sync', { cache: 'no-store' });
+        const response = await fetch(apiUrl('/api/sync'), { cache: 'no-store' });
         if (!response.ok) throw new Error('Synchronisation indisponible');
         const shared = await response.json();
         if (shared && shared.P) {
@@ -1016,11 +1021,11 @@
       setLiveStatus('Reconnexion...', 'reconnecting');
       try {
         const token = localStorage.getItem('campusshop-token');
-        const response = await fetch('/api/evenements/ticket', { method: 'POST', headers: token ? { Authorization: 'Bearer ' + token } : {} });
+        const response = await fetch(apiUrl('/api/evenements/ticket'), { method: 'POST', headers: token ? { Authorization: 'Bearer ' + token } : {} });
         if (!response.ok) throw new Error('Ticket SSE refusé');
         const { ticket } = await response.json();
         const lastId = lastLiveEventId ? '&last_id=' + encodeURIComponent(lastLiveEventId) : '';
-        liveSource = new EventSource('/api/evenements?ticket=' + encodeURIComponent(ticket) + lastId);
+        liveSource = new EventSource(apiUrl('/api/evenements?ticket=' + encodeURIComponent(ticket) + lastId));
         liveSource.onopen = () => { liveRetry = 0; stopPolling(); setLiveStatus('En direct') };
         liveSource.onmessage = event => { lastLiveEventId = event.lastEventId || lastLiveEventId; scheduleLiveRefresh(event.data ? 'Nouvelle mise à jour reçue' : undefined) };
         liveSource.addEventListener('resync', () => scheduleLiveRefresh('Données resynchronisées'));
@@ -1110,14 +1115,15 @@
   <label>Email du client (facultatif)<input name="email" type="email" inputmode="email" placeholder="nom@exemple.com"></label>
   <label>Photo du client<input type="file" id="cph" accept="image/*" capture="user"></label><div id="cpv"></div>
   <div class="sg" id="signature-pad"><div class="sg-head"><div class="sg-title"><b>Signature du client</b><span>Tracez au doigt, au stylet ou à la souris</span></div><div class="sg-actions"><button type="button" class="btn alt sm" data-act="sigfull" aria-controls="sig" aria-pressed="false" title="Agrandir la zone de signature">Plein écran</button><button type="button" class="btn alt sm" data-act="clrsig">Effacer</button></div></div><canvas id="sig" width="600" height="200" tabindex="0" aria-label="Zone de signature du client"></canvas><p class="sg-status" id="sig-status" role="status">La signature est obligatoire si le paiement est échelonné.</p></div>
-  <label class="chk"><input type="checkbox" id="ack"> Le client reconnaît devoir le reste et s'engage à le payer aux dates prévues.</label></div>
+  <label>Validation de la reconnaissance<select name="approval" id="approval"><option value="none" selected>Sans empreinte : validation manuelle</option><option value="biometric">Avec empreinte biométrique</option></select></label>
+  <label class="chk" id="manual-ack"><input type="checkbox" id="ack"> Le client reconnaît devoir le reste et s'engage à le payer aux dates prévues.</label><p class="hint" id="biometric-status" role="status" aria-live="polite"></p></div>
   <label>Envoi de la facture<select name="env" id="env"><option value="0" selected>Ne pas envoyer</option><option value="wa">Envoyer par WhatsApp</option><option value="em">Envoyer par email</option></select></label>
   <label id="dl" hidden>Numéro WhatsApp du destinataire<input name="dest" id="dest" type="tel" inputmode="tel" placeholder="034 00 000 00"></label>
   <button class="btn" type="submit"${ok.length ? '' : ' disabled'}>Enregistrer la vente</button><p class="hint" id="sh"></p></form>
   <div class="tw"><table><thead><tr><th>N°</th><th>Date</th><th>Client</th><th>Produit</th><th>Total</th><th>Gain</th><th>Statut</th><th></th></tr></thead><tbody>
   ${[...db.S].reverse().slice(0, 40).map(s => `<tr><td>${String(s.no).padStart(4, '0')}</td><td>${short(s.d)}</td><td>${e(s.c)}</td><td>${e(s.n)} ×${s.q}</td><td>${fmt(tot(s))}</td><td><b style="color:var(--ok)">+${fmt(gain(s))}</b></td><td>${tagS(s)}</td><td><button class="btn alt sm" data-act="inv" data-id="${s.id}" type="button">Facture</button>${s.rec ? ` <button class="btn alt sm" data-act="debt" data-id="${s.id}" type="button">Reconnaissance</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="8">Aucune vente pour le moment.</td></tr>'}
   </tbody></table></div></section>`;
-      if (ok.length) { $('sp').oninput = $('sq').oninput = $('mode').oninput = sync; $('sm').oninput = kycT; sync(); sigInit() }
+      if (ok.length) { $('sp').oninput = $('sq').oninput = $('mode').oninput = sync; $('sm').oninput = kycT; $('approval').onchange = () => { biometricApproved = false; approvalModeT() }; sync(); sigInit() }
     }
     const tagS = s => reste(s) <= 0 ? '<span class="tag yes">Payé</span>' : late(s) ? `<span class="tag late">En retard · ${fmt(reste(s))}</span>` : `<span class="tag wait">Reste ${fmt(reste(s))}</span>`;
     function sync() {
@@ -1133,7 +1139,27 @@
       m.dataset.was = md.value;
       kycT();
     }
-    function kycT() { const p = prod($('sp').value), t = p ? p.v * (+$('sq').value || 0) : 0; $('kyc').hidden = !(p && p.f && $('mode').value === '1' && +$('sm').value < t) }
+    function kycT() { const p = prod($('sp').value), t = p ? p.v * (+$('sq').value || 0) : 0; $('kyc').hidden = !(p && p.f && $('mode').value === '1' && +$('sm').value < t); if (!$('kyc').hidden) approvalModeT() }
+    function approvalModeT() { const biometric = $('approval')?.value === 'biometric'; $('manual-ack').hidden = biometric; if (!biometric) $('biometric-status').textContent = ''; else $('biometric-status').textContent = biometricApproved ? 'Empreinte vérifiée pour cette vente.' : 'L empreinte du client sera demandée à la validation.' }
+    async function biometricApproval() {
+      if (!window.isSecureContext) throw new Error('Chrome bloque la biométrie car le certificat HTTPS local n est pas reconnu. Installe le certificat Campus Shop sur le téléphone, puis rouvre https://192.168.0.91:8443.');
+      if (!window.PublicKeyCredential) throw new Error('WebAuthn est indisponible dans ce contexte Chrome. Vérifie que tu utilises bien HTTPS et non HTTP.');
+      if (!window.SimpleWebAuthnBrowser || !SimpleWebAuthnBrowser.browserSupportsWebAuthn()) throw new Error('WebAuthn est désactivé par la configuration de sécurité de Chrome. Vérifie le certificat HTTPS et le verrou de sécurité de la page.');
+      let optionsResponse = await fetch(apiUrl('/api/biometrie/approbation/options'));
+      if (optionsResponse.status === 409) {
+        const registerOptions = await fetch(apiUrl('/api/biometrie/inscription/options')).then(response => response.json());
+        const registration = await SimpleWebAuthnBrowser.startRegistration({ optionsJSON: registerOptions });
+        const registered = await fetch(apiUrl('/api/biometrie/inscription/verification'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(registration) });
+        if (!registered.ok) throw new Error('Inscription biométrique refusée');
+        optionsResponse = await fetch(apiUrl('/api/biometrie/approbation/options'));
+      }
+      if (!optionsResponse.ok) throw new Error((await optionsResponse.json()).detail || 'Empreinte indisponible');
+      const options = await optionsResponse.json();
+      const assertion = await SimpleWebAuthnBrowser.startAuthentication({ optionsJSON: options });
+      const verified = await fetch(apiUrl('/api/biometrie/approbation/verification'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(assertion) });
+      if (!verified.ok) throw new Error('Empreinte non vérifiée');
+      biometricApproved = true; approvalModeT();
+    }
 
     /* ---------- Facilités et dettes ---------- */
     function vDettes() {
@@ -1201,7 +1227,7 @@
     }
     async function saveFileOnServer(file) {
       const upload = new FormData(); upload.append('file', file, file.name);
-      const response = await fetch('/api/factures', { method: 'POST', body: upload });
+      const response = await fetch(apiUrl('/api/factures'), { method: 'POST', body: upload });
       if (!response.ok) throw new Error('Sauvegarde serveur refusée');
     }
     async function shareInvoicePdf(id) {
@@ -1313,7 +1339,7 @@
       if (ev.target.id === 'sm') ev.target.dataset.auto = 0;
       if (ev.target.id === 'cph' && ev.target.files[0]) readImg(ev.target.files[0], u => { tmpC = u; $('cpv').innerHTML = `<img class="th lg" src="${u}" alt="Aperçu">` });
     });
-    document.addEventListener('submit', ev => {
+    document.addEventListener('submit', async ev => {
       ev.preventDefault(); const f = new FormData(ev.target);
       if (ev.target.id === 'fp') { const fa = +f.get('f'); db.P.unshift({ id: Date.now(), n: f.get('n').trim(), a: +f.get('a'), v: +f.get('v'), s: +f.get('s'), f: fa, t: fa ? +f.get('t') : 0, iv: fa ? +f.get('iv') : 0, img: tmpImg }); save(); vProd(); toast('Produit créé') }
       if (ev.target.id === 'fv') {
@@ -1323,7 +1349,10 @@
         if (kyc) {
           if (!/^\d{4}$/.test(etu)) return toast('Numéro ETU : 4 chiffres exactement');
           if ((f.get('tel') || '').replace(/\D/g, '').length < 9) return toast('Numéro de téléphone invalide');
-          if (!tmpC) return toast('Ajoute la photo du client'); if (!sigOn) return toast('Le client doit signer'); if (!$('ack').checked) return toast('Coche la reconnaissance de dette')
+          if (!tmpC) return toast('Ajoute la photo du client'); if (!sigOn) return toast('Le client doit signer');
+          if (f.get('approval') === 'biometric') {
+            if (!biometricApproved) { try { await biometricApproval() } catch (error) { return toast(error.message || 'Empreinte biométrique refusée') } }
+          } else if (!$('ack').checked) return toast('Coche la reconnaissance de dette')
         }
         const env = f.get('env') || '0'; let dest = (f.get('dest') || '').trim();
         if (env !== '0') {

@@ -1,0 +1,10 @@
+certs/*.key
+certs/campus-shop.crt
+certs/campus-shop.csr
+certs/campus-shop.ext
+certs/campus-shop-ca.crt
+.env
+.env.*
+!.env.example
+__pycache__/
+.pytest_cache/

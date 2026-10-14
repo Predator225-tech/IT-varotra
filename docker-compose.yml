@@ -24,6 +24,8 @@ services:
       UPLOAD_DIR: /data/uploads
       INVOICE_DIR: /data/invoices
       SYNC_FILE: /data/sync/campus-shop.json
+      WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID:-192.168.0.91}
+      WEBAUTHN_ORIGIN: ${WEBAUTHN_ORIGIN:-https://localhost:8443,https://192.168.0.91:8443,https://192.168.0.31:8443}
     volumes:
       - uploads:/data/uploads
       - ./frontend/facture:/data/invoices
@@ -39,6 +41,7 @@ services:
       - api
     ports:
       - "8080:80"
+      - "8443:443"
 volumes:
   postgres_data:
   uploads:
